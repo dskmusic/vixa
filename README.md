@@ -29,7 +29,15 @@
 
 ---
 
-> 📸 *Capturas de pantalla:* próximamente en [`docs/screenshots/`](docs/screenshots).
+<p align="center">
+  <img src="docs/screenshots/vixa01.jpg" width="31%" alt="Inicio con el asistente de vídeo y herramientas rápidas">
+  <img src="docs/screenshots/vixa02.jpg" width="31%" alt="Elegir un estilo en el asistente">
+  <img src="docs/screenshots/vixa03.jpg" width="31%" alt="Editor con música, transiciones y línea de tiempo">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/vixa04.jpg" width="92%" alt="Línea de tiempo con clips, transiciones y audio">
+</p>
 
 ## ✨ ¿Qué es Vixa?
 

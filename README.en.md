@@ -29,7 +29,15 @@
 
 ---
 
-> 📸 *Screenshots:* coming soon in [`docs/screenshots/`](docs/screenshots).
+<p align="center">
+  <img src="docs/screenshots/vixa01.jpg" width="31%" alt="Home with the video assistant and quick tools">
+  <img src="docs/screenshots/vixa02.jpg" width="31%" alt="Choosing a style in the assistant">
+  <img src="docs/screenshots/vixa03.jpg" width="31%" alt="Editor with music, transitions and timeline">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/vixa04.jpg" width="92%" alt="Timeline with clips, transitions and audio">
+</p>
 
 ## ✨ What is Vixa?
 
