@@ -1520,4 +1520,6 @@
     <string name="api_missing_note">Algunas fuentes online aún no tienen clave: despliega cada una, pulsa «Obtener clave» (es gratis) y pégala. Las fuentes sin clave no se consultan.</string>
     <string name="github_project">Proyecto en GitHub</string>
     <string name="github_project_hint">Código fuente, avisos de fallos y novedades</string>
+    <string name="web_project">Web oficial</string>
+    <string name="web_project_hint">Última versión, funciones y novedades</string>
 </resources>

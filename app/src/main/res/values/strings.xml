@@ -1521,4 +1521,6 @@
     <string name="api_missing_note">Some online sources have no key yet: open each one, tap "Get API key" (it is free) and paste it. Sources without a key are skipped.</string>
     <string name="github_project">Project on GitHub</string>
     <string name="github_project_hint">Source code, issues and updates</string>
+    <string name="web_project">Official website</string>
+    <string name="web_project_hint">Latest version, features and news</string>
 </resources>

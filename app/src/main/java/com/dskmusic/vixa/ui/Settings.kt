@@ -24,6 +24,7 @@ import com.dskmusic.vixa.engine.FxThumbs
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.asImageBitmap
 import com.dskmusic.vixa.ui.editor.FilterThumbs
@@ -88,6 +89,7 @@ import java.util.Locale
 
 const val DSK_URL = "https://www.dskmusic.com/dsk_dev_redirect.php"
 const val GITHUB_URL = "https://github.com/dskmusic/vixa"
+const val WEB_URL = "https://vixa.dskmusic.com"
 
 private fun dirSize(f: File?): Long = if (f == null || !f.exists()) 0L else if (f.isFile) f.length() else (f.listFiles() ?: emptyArray()).sumOf { dirSize(it) }
 
@@ -283,6 +285,21 @@ fun SettingsScreen(container: AppContainer, onBack: () -> Unit, onTutorial: () -
                             Text(stringResource(R.string.github_project_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Text("github.com/dskmusic/vixa", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                    }
+                    // Enlace a la web oficial, debajo del de GitHub.
+                    Row(
+                        Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 14.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                            .clickable { try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(WEB_URL)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (e: Throwable) { ErrorLog.log("Link", e) } }
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    ) {
+                        Icon(Icons.Default.Public, null, Modifier.size(32.dp), tint = MaterialTheme.colorScheme.primary)
+                        Column(Modifier.weight(1f)) {
+                            Text(stringResource(R.string.web_project), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.web_project_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Text("vixa.dskmusic.com", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                     }
                     // Atribución.
                     Row(Modifier.fillMaxWidth().padding(24.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
