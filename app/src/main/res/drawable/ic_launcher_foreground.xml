@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icono de Vixa: el mismo lienzo con paisaje de Pixa, convertido en fotograma de película
+     (tiras con perforaciones arriba y abajo) y un botón de reproducción en el centro. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Lienzo (tarjeta blanca redondeada) -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M30,27h48a7,7 0,0 1,7 7v40a7,7 0,0 1,-7 7h-48a7,7 0,0 1,-7 -7v-40a7,7 0,0 1,7 -7z" />
+
+    <!-- Cielo -->
+    <path
+        android:fillColor="#FF7CC4FF"
+        android:pathData="M23,37h62v34h-62z" />
+    <!-- Sol -->
+    <path
+        android:fillColor="#FFFFD166"
+        android:pathData="M66,46a5,5 0,1 0,0.01 0z" />
+    <!-- Montaña lejana -->
+    <path
+        android:fillColor="#FF4A9D6B"
+        android:pathData="M23,71l17,-19l12,14l8,-9l25,14z" />
+    <!-- Montaña cercana -->
+    <path
+        android:fillColor="#FF2E7D52"
+        android:pathData="M23,71l14,-12l12,12z" />
+
+    <!-- Tira de película superior (con esquinas redondeadas del lienzo) -->
+    <path
+        android:fillColor="#FF1E2433"
+        android:pathData="M23,34a7,7 0,0 1,7 -7h48a7,7 0,0 1,7 7v3h-62z" />
+    <!-- Tira de película inferior -->
+    <path
+        android:fillColor="#FF1E2433"
+        android:pathData="M23,71h62v3a7,7 0,0 1,-7 7h-48a7,7 0,0 1,-7 -7z" />
+    <!-- Perforaciones superiores -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M28,30h6a1,1 0,0 1,1 1v2a1,1 0,0 1,-1 1h-6a1,1 0,0 1,-1 -1v-2a1,1 0,0 1,1 -1z M39,30h6a1,1 0,0 1,1 1v2a1,1 0,0 1,-1 1h-6a1,1 0,0 1,-1 -1v-2a1,1 0,0 1,1 -1z M50,30h6a1,1 0,0 1,1 1v2a1,1 0,0 1,-1 1h-6a1,1 0,0 1,-1 -1v-2a1,1 0,0 1,1 -1z M61,30h6a1,1 0,0 1,1 1v2a1,1 0,0 1,-1 1h-6a1,1 0,0 1,-1 -1v-2a1,1 0,0 1,1 -1z M72,30h6a1,1 0,0 1,1 1v2a1,1 0,0 1,-1 1h-6a1,1 0,0 1,-1 -1v-2a1,1 0,0 1,1 -1z" />
+    <!-- Perforaciones inferiores -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M28,74h6a1,1 0,0 1,1 1v2a1,1 0,0 1,-1 1h-6a1,1 0,0 1,-1 -1v-2a1,1 0,0 1,1 -1z M39,74h6a1,1 0,0 1,1 1v2a1,1 0,0 1,-1 1h-6a1,1 0,0 1,-1 -1v-2a1,1 0,0 1,1 -1z M50,74h6a1,1 0,0 1,1 1v2a1,1 0,0 1,-1 1h-6a1,1 0,0 1,-1 -1v-2a1,1 0,0 1,1 -1z M61,74h6a1,1 0,0 1,1 1v2a1,1 0,0 1,-1 1h-6a1,1 0,0 1,-1 -1v-2a1,1 0,0 1,1 -1z M72,74h6a1,1 0,0 1,1 1v2a1,1 0,0 1,-1 1h-6a1,1 0,0 1,-1 -1v-2a1,1 0,0 1,1 -1z" />
+
+    <!-- Botón de reproducción: disco translúcido + triángulo blanco -->
+    <path
+        android:fillColor="#73000000"
+        android:pathData="M54,43a11,11 0,1 0,0.01 0z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M50,48l12,6l-12,6z" />
+</vector>

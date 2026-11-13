@@ -1,0 +1,398 @@
+package com.dskmusic.vixa.data
+
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.media.MediaMetadataRetriever
+import android.net.Uri
+import com.dskmusic.vixa.model.Clip
+import com.dskmusic.vixa.model.ClipKind
+import com.dskmusic.vixa.model.FORMAT_VERSION
+import com.dskmusic.vixa.model.Project
+import com.dskmusic.vixa.model.aiPaths
+import com.dskmusic.vixa.model.allPaths
+import com.dskmusic.vixa.model.mapPaths
+import com.dskmusic.vixa.model.newId
+import com.dskmusic.vixa.model.normalized
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
+import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
+import java.util.zip.ZipOutputStream
+
+@Serializable
+data class ProjectInfo(
+    val id: String,
+    val name: String,
+    val modifiedAt: Long,
+    val createdAt: Long = 0,
+    val durationUs: Long = 0,
+    val width: Int = 0,
+    val height: Int = 0,
+    val isTemplate: Boolean = false,
+)
+
+class SnapshotInfo(val file: File, val label: String, val timeMs: Long)
+
+/**
+ * Proyectos en disco: files/projects/<id>/{project.json, meta.json, thumb.jpg, snapshots/}.
+ * El formato .vixa es un ZIP con project.json (versionado) y, opcionalmente, media/ con los medios.
+ */
+class ProjectStore(private val context: Context) {
+    private val root = File(context.filesDir, "projects").apply { mkdirs() }
+    private val templatesDir = File(context.filesDir, "text_templates").apply { mkdirs() }
+
+    private fun dir(id: String) = File(root, id)
+    fun thumbFile(id: String) = File(dir(id), "thumb.jpg")
+
+    companion object {
+        /** Días que un proyecto eliminado permanece en la papelera. */
+        const val TRASH_DAYS = 10
+
+        /**
+         * Migraciones del formato: MIGRATIONS[n] convierte un project.json de versión n a n+1.
+         * v1 → v2 (funciones con IA): solo añade campos opcionales (Clip.aiAudio, TextSpec.wordsUs,
+         * Project.karaokeColor), así que el JSON no cambia. v2 → v3: Clip.personCut. v3 → v4: Clip.objTracks (seguimiento de objetos); todos opcionales.
+         */
+        val MIGRATIONS: Map<Int, (JsonObject) -> JsonObject> = mapOf(1 to { it }, 2 to { it }, 3 to { it })
+
+        fun decode(text: String): Project {
+            var obj: JsonObject = VixaJson.parseToJsonElement(text).jsonObject
+            var version = (obj["formatVersion"] as? JsonPrimitive)?.int ?: 1
+            if (version > FORMAT_VERSION) throw IllegalStateException("Formato de proyecto más nuevo (v$version) que esta versión de Vixa")
+            while (version < FORMAT_VERSION) {
+                val step = MIGRATIONS[version] ?: throw IllegalStateException("Falta la migración del formato v$version")
+                obj = step(obj)
+                version++
+            }
+            val map = obj.toMutableMap()
+            map["formatVersion"] = JsonPrimitive(FORMAT_VERSION)
+            val element: JsonElement = JsonObject(map)
+            return VixaJson.decodeFromJsonElement(Project.serializer(), element).normalized()
+        }
+
+        fun encode(p: Project): String = VixaJson.encodeToString(Project.serializer(), p.copy(formatVersion = FORMAT_VERSION))
+    }
+
+    suspend fun list(): List<ProjectInfo> = withContext(Dispatchers.IO) { infos(root) }
+
+    private fun infos(base: File): List<ProjectInfo> =
+        base.listFiles().orEmpty().filter { it.isDirectory }.mapNotNull { d ->
+            try {
+                val meta = File(d, "meta.json")
+                if (meta.exists()) VixaJson.decodeFromString(ProjectInfo.serializer(), meta.readText())
+                else if (File(d, "project.json").exists()) info(decode(File(d, "project.json").readText())) else null
+            } catch (e: Throwable) {
+                ErrorLog.log("ProjectStore/list " + d.name, e)
+                null
+            }
+        }.sortedByDescending { it.modifiedAt }
+
+    // ---------------------------------------------------------------------------------------------
+    // Papelera: los proyectos eliminados se guardan [TRASH_DAYS] días y después se borran solos.
+    // ---------------------------------------------------------------------------------------------
+
+    private val trash = File(context.filesDir, "trash").apply { mkdirs() }
+
+    private fun deletedAt(d: File): Long = File(d, "deleted_at").takeIf { it.exists() }?.readText()?.trim()?.toLongOrNull() ?: d.lastModified()
+
+    fun trashThumbFile(id: String) = File(File(trash, id), "thumb.jpg")
+
+    /** Proyectos en la papelera con los días que les quedan (los más recientes primero). Borra de paso los caducados. */
+    suspend fun trashed(): List<Pair<ProjectInfo, Int>> = withContext(Dispatchers.IO) {
+        val now = System.currentTimeMillis()
+        val day = 86_400_000L
+        for (d in trash.listFiles().orEmpty()) if (now - deletedAt(d) >= TRASH_DAYS * day) d.deleteRecursively()
+        infos(trash).map { it to deletedAt(File(trash, it.id)) }.sortedByDescending { it.second }
+            .map { (i, at) -> i to (TRASH_DAYS - ((now - at) / day).toInt()).coerceIn(1, TRASH_DAYS) }
+    }
+
+    suspend fun restore(id: String) = withContext(Dispatchers.IO) {
+        val src = File(trash, id)
+        if (src.exists() && !dir(id).exists()) { File(src, "deleted_at").delete(); move(src, dir(id)) }
+        Unit
+    }
+
+    /** Borrado definitivo de un proyecto de la papelera, o de toda la papelera con [id] vacío. */
+    suspend fun purge(id: String = "") = withContext(Dispatchers.IO) {
+        if (id.isEmpty()) trash.listFiles().orEmpty().forEach { it.deleteRecursively() } else File(trash, id).deleteRecursively()
+        Unit
+    }
+
+    private fun move(src: File, dst: File) {
+        dst.deleteRecursively()
+        if (!src.renameTo(dst)) { src.copyRecursively(dst, overwrite = true); src.deleteRecursively() }
+    }
+
+    private fun info(p: Project) = ProjectInfo(p.id, p.name, p.modifiedAt, p.createdAt, p.durationUs, p.width, p.height, p.isTemplate)
+
+    /** Guardado atómico (archivo temporal + renombrado) para no dejar nunca un project.json a medias. */
+    suspend fun save(project: Project, updateThumb: Boolean = false, thumb: Bitmap? = null): Project = withContext(Dispatchers.IO) {
+        val p = project.copy(modifiedAt = System.currentTimeMillis())
+        val d = dir(p.id).apply { mkdirs() }
+        val tmp = File(d, "project.json.tmp")
+        tmp.writeText(encode(p))
+        val target = File(d, "project.json")
+        if (!tmp.renameTo(target)) { tmp.copyTo(target, overwrite = true); tmp.delete() }
+        File(d, "meta.json").writeText(VixaJson.encodeToString(ProjectInfo.serializer(), info(p)))
+        // Con un fotograma de la vista previa (si no es oscuro) se usa ese; si no, el primer medio del proyecto.
+        if (updateThumb && thumb != null && !isDark(thumb)) writeThumb(p.id, thumb)
+        else if (updateThumb || !thumbFile(p.id).exists()) makeThumb(p)
+        p
+    }
+
+    /** Brillo medio (muestreado) por debajo del que una imagen se considera negra. */
+    private fun luma(b: Bitmap): Float {
+        var sum = 0f
+        var n = 0
+        val stepX = maxOf(1, b.width / 16)
+        val stepY = maxOf(1, b.height / 16)
+        var y = 0
+        while (y < b.height) {
+            var x = 0
+            while (x < b.width) {
+                val c = b.getPixel(x, y)
+                sum += 0.2126f * ((c shr 16) and 0xFF) + 0.7152f * ((c shr 8) and 0xFF) + 0.0722f * (c and 0xFF)
+                n++
+                x += stepX
+            }
+            y += stepY
+        }
+        return if (n == 0) 0f else sum / n
+    }
+
+    private fun isDark(b: Bitmap) = luma(b) < 18f
+
+    private fun writeThumb(id: String, bmp: Bitmap) {
+        try {
+            val s = minOf(1f, 360f / maxOf(bmp.width, bmp.height))
+            val small = if (s < 1f) Bitmap.createScaledBitmap(bmp, (bmp.width * s).toInt().coerceAtLeast(2), (bmp.height * s).toInt().coerceAtLeast(2), true) else bmp
+            FileOutputStream(thumbFile(id)).use { small.compress(Bitmap.CompressFormat.JPEG, 82, it) }
+        } catch (e: Throwable) {
+            ErrorLog.log("ProjectStore/thumb", e)
+        }
+    }
+
+    @kotlinx.serialization.Serializable
+    private class HistEntryDto(val label: String, val timeMs: Long, val project: Project)
+
+    @kotlinx.serialization.Serializable
+    private class HistFileDto(val index: Int, val entries: List<HistEntryDto>)
+
+    /** Historial de deshacer/rehacer entre sesiones: se guardan los últimos pasos (acotado para no inflar el disco). */
+    suspend fun saveHistory(id: String, entries: List<com.dskmusic.vixa.model.History.Entry>, index: Int) = withContext(Dispatchers.IO) {
+        try {
+            val start = (entries.size - 25).coerceAtLeast(0)
+            val dto = HistFileDto((index - start).coerceAtLeast(0), entries.subList(start, entries.size).map { HistEntryDto(it.label, it.timeMs, it.project) })
+            val d = dir(id).apply { mkdirs() }
+            val tmp = File(d, "history.json.tmp")
+            tmp.writeText(VixaJson.encodeToString(HistFileDto.serializer(), dto))
+            if (!tmp.renameTo(File(d, "history.json"))) { tmp.copyTo(File(d, "history.json"), overwrite = true); tmp.delete() }
+        } catch (e: Throwable) { ErrorLog.log("ProjectStore/saveHistory $id", e) }
+    }
+
+    suspend fun loadHistory(id: String): Pair<List<com.dskmusic.vixa.model.History.Entry>, Int>? = withContext(Dispatchers.IO) {
+        try {
+            val f = File(dir(id), "history.json")
+            if (!f.exists()) return@withContext null
+            val dto = VixaJson.decodeFromString(HistFileDto.serializer(), f.readText())
+            dto.entries.map { com.dskmusic.vixa.model.History.Entry(it.label, it.project, it.timeMs) } to dto.index
+        } catch (e: Throwable) { null }
+    }
+
+    suspend fun load(id: String): Project? = withContext(Dispatchers.IO) {
+        try {
+            val f = File(dir(id), "project.json")
+            if (!f.exists()) null else decode(f.readText())
+        } catch (e: Throwable) {
+            ErrorLog.log("ProjectStore/load $id", e)
+            null
+        }
+    }
+
+    /** Elimina un proyecto: va a la papelera (ver [trashed]). */
+    suspend fun delete(id: String) = withContext(Dispatchers.IO) {
+        val src = dir(id)
+        if (src.exists()) {
+            // Un proyecto vacío (sin ningún clip) no vale la pena guardarlo: se borra directamente.
+            val empty = try {
+                val meta = File(src, "meta.json")
+                if (meta.exists()) VixaJson.decodeFromString(ProjectInfo.serializer(), meta.readText()).durationUs <= 0L
+                else decode(File(src, "project.json").readText()).allClips().isEmpty()
+            } catch (e: Throwable) { false }
+            if (empty) { src.deleteRecursively(); return@withContext Unit }
+            val dst = File(trash, id)
+            move(src, dst)
+            File(dst, "deleted_at").writeText(System.currentTimeMillis().toString())
+        }
+        Unit
+    }
+
+    suspend fun rename(id: String, name: String) {
+        val p = load(id) ?: return
+        save(p.copy(name = name))
+    }
+
+    suspend fun duplicate(id: String, suffix: String): Project? {
+        val p = load(id) ?: return null
+        return save(p.copy(id = newId(), name = p.name + " " + suffix, createdAt = System.currentTimeMillis()), updateThumb = true)
+    }
+
+    private fun makeThumb(p: Project) {
+        try {
+            val c = p.mainTrack.clips.firstOrNull { it.media != null } ?: p.allClips().firstOrNull { it.isVisual && it.media != null }
+            val m = c?.media
+            val bmp: Bitmap? = when {
+                c == null || m == null -> null
+                m.isImage -> BitmapFactory.decodeFile(m.path, BitmapFactory.Options().apply { inSampleSize = 4 })
+                else -> {
+                    // Varios instantes del principio: se usa el primero que no sea negro (o, si todos lo son, el más claro).
+                    val r = MediaMetadataRetriever()
+                    try {
+                        r.setDataSource(m.path)
+                        var best: Bitmap? = null
+                        var bestL = -1f
+                        for (t in listOf(minOf(500_000L, c.srcSpanUs / 2), 0L, 1_000_000L, 2_000_000L, 3_500_000L, 5_000_000L).distinct()) {
+                            if (t > c.srcSpanUs && t != 0L) continue
+                            val f = r.getFrameAtTime(c.srcInUs + t, MediaMetadataRetriever.OPTION_CLOSEST_SYNC) ?: continue
+                            val l = luma(f)
+                            if (l > bestL) { best = f; bestL = l }
+                            if (l >= 18f) break
+                        }
+                        best
+                    } finally { r.release() }
+                }
+            }
+            if (bmp == null) { thumbFile(p.id).delete(); return }
+            writeThumb(p.id, bmp)
+        } catch (e: Throwable) {
+            ErrorLog.log("ProjectStore/thumb", e)
+        }
+    }
+
+    // --------------------------------------------------------------------------------------
+    // Instantáneas de versión
+    // --------------------------------------------------------------------------------------
+
+    suspend fun saveSnapshot(p: Project, label: String) = withContext(Dispatchers.IO) {
+        val d = File(dir(p.id), "snapshots").apply { mkdirs() }
+        val safe = label.replace(Regex("[\\\\/:*?\"<>|]"), "_").take(40)
+        File(d, System.currentTimeMillis().toString() + "~" + safe + ".json").writeText(encode(p))
+    }
+
+    suspend fun snapshots(id: String): List<SnapshotInfo> = withContext(Dispatchers.IO) {
+        File(dir(id), "snapshots").listFiles().orEmpty().filter { it.extension == "json" }.map { f ->
+            val base = f.nameWithoutExtension
+            SnapshotInfo(f, base.substringAfter('~', ""), base.substringBefore('~').toLongOrNull() ?: f.lastModified())
+        }.sortedByDescending { it.timeMs }
+    }
+
+    suspend fun loadSnapshot(s: SnapshotInfo): Project? = withContext(Dispatchers.IO) {
+        try { decode(s.file.readText()) } catch (e: Throwable) { ErrorLog.log("Snapshot", e); null }
+    }
+
+    suspend fun deleteSnapshot(s: SnapshotInfo) = withContext(Dispatchers.IO) { s.file.delete(); Unit }
+
+    // --------------------------------------------------------------------------------------
+    // Plantillas de texto propias
+    // --------------------------------------------------------------------------------------
+
+    suspend fun saveTextTemplate(clip: Clip, name: String) = withContext(Dispatchers.IO) {
+        val c = clip.copy(id = newId(), startUs = 0, label = name, groupId = "")
+        File(templatesDir, c.id + ".json").writeText(VixaJson.encodeToString(Clip.serializer(), c))
+    }
+
+    suspend fun textTemplates(): List<Clip> = withContext(Dispatchers.IO) {
+        templatesDir.listFiles().orEmpty().sortedByDescending { it.lastModified() }.mapNotNull {
+            try { VixaJson.decodeFromString(Clip.serializer(), it.readText()) } catch (e: Throwable) { null }
+        }.filter { it.kind == ClipKind.TEXT }
+    }
+
+    suspend fun deleteTextTemplate(id: String) = withContext(Dispatchers.IO) { File(templatesDir, "$id.json").delete(); Unit }
+
+    // --------------------------------------------------------------------------------------
+    // Medios que faltan
+    // --------------------------------------------------------------------------------------
+
+    fun missing(p: Project): List<String> = (p.allPaths() - p.aiPaths()).filter { !File(it).exists() }
+
+    fun relink(p: Project, oldPath: String, newPath: String): Project = p.mapPaths { if (it == oldPath) newPath else it }
+
+    // --------------------------------------------------------------------------------------
+    // .vixa
+    // --------------------------------------------------------------------------------------
+
+    /** Empaqueta el proyecto en [dest]. Con [includeMedia] los medios viajan dentro (portable a otro dispositivo). */
+    suspend fun exportVixa(p: Project, dest: File, includeMedia: Boolean, onProgress: (Float) -> Unit = {}): Boolean = withContext(Dispatchers.IO) {
+        val tmp = File(dest.parentFile, dest.name + ".tmp")
+        try {
+            dest.parentFile?.mkdirs()
+            val paths = if (includeMedia) p.allPaths().filter { File(it).exists() } else emptyList()
+            val names = HashMap<String, String>()
+            paths.forEachIndexed { i, path -> names[path] = "media/" + i + "_" + File(path).name }
+            val packed = if (includeMedia) p.mapPaths { names[it] ?: it } else p
+            ZipOutputStream(FileOutputStream(tmp).buffered()).use { zip ->
+                zip.putNextEntry(ZipEntry("project.json"))
+                zip.write(encode(packed).toByteArray())
+                zip.closeEntry()
+                paths.forEachIndexed { i, path ->
+                    // Los medios ya están comprimidos: se guardan con compresión mínima.
+                    zip.setLevel(0)
+                    zip.putNextEntry(ZipEntry(names[path]))
+                    File(path).inputStream().use { it.copyTo(zip, 1 shl 16) }
+                    zip.closeEntry()
+                    onProgress((i + 1).toFloat() / paths.size)
+                }
+            }
+            if (dest.exists()) dest.delete()
+            if (!tmp.renameTo(dest)) { tmp.copyTo(dest, overwrite = true); tmp.delete() }
+            true
+        } catch (e: Throwable) {
+            ErrorLog.log("ExportVixa", e)
+            tmp.delete()
+            false
+        }
+    }
+
+    suspend fun importVixa(uri: Uri): Project? = withContext(Dispatchers.IO) {
+        try {
+            val input = if (uri.scheme == "file") File(uri.path ?: return@withContext null).inputStream() else context.contentResolver.openInputStream(uri)
+            input?.use { importVixa(it) }
+        } catch (e: Throwable) {
+            ErrorLog.log("ImportVixa", e)
+            null
+        }
+    }
+
+    private suspend fun importVixa(input: InputStream): Project? {
+        val id = newId()
+        val mediaDir = File(context.filesDir, "media/pkg_$id")
+        var json: String? = null
+        ZipInputStream(input.buffered()).use { zip ->
+            while (true) {
+                val e = zip.nextEntry ?: break
+                val name = e.name.replace('\\', '/')
+                if (name == "project.json") {
+                    json = zip.readBytes().toString(Charsets.UTF_8)
+                } else if (name.startsWith("media/") && !e.isDirectory && !name.contains("..")) {
+                    mediaDir.mkdirs()
+                    FileOutputStream(File(mediaDir, name.removePrefix("media/").replace('/', '_'))).use { zip.copyTo(it, 1 shl 16) }
+                }
+                zip.closeEntry()
+            }
+        }
+        val text = json ?: return null
+        val p = decode(text).mapPaths { if (it.startsWith("media/")) File(mediaDir, it.removePrefix("media/").replace('/', '_')).path else it }
+        return save(p.copy(id = id), updateThumb = true)
+    }
+}

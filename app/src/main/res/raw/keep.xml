@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Las imágenes de muestra fx_sample_N se buscan por nombre al ejecutar: el recortador de recursos no debe quitarlas. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/fx_sample_*" />

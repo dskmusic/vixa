@@ -1,0 +1,76 @@
+# =====================================================================================
+#  Vixa · archivos que NO se suben a GitHub
+# =====================================================================================
+
+# --- Secretos y configuración local (¡nunca subir!) --------------------------------
+local.properties
+*.keystore
+*.jks
+*.p12
+*.pem
+keystore.properties
+google-services.json
+.env
+.env.*
+secrets/
+
+# --- Copias de seguridad y archivos personales -------------------------------------
+.backups/
+.backup/
+_backups/
+_backup/
+*.rar
+*.7z
+*.zip
+CREAR BACKUP.pyw
+*.lnk
+prompt_inicial*.txt
+PREPARAR_GITHUB.md
+HTML/
+PLAN.md
+MODELOS_IA.md
+# Scripts personales (gradlew.bat sí se sube)
+subir_cambios.bat
+bajar_*.bat
+configurar_*.bat
+
+# --- Android Studio / Gradle / compilación -----------------------------------------
+*.iml
+.idea/
+.gradle/
+.kotlin/
+build/
+app/build/
+app/release/
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.log
+
+# --- Carpeta "gradle": solo el wrapper y el catálogo de versiones se suben ---------
+# (en este proyecto "gradle/" se usa también como carpeta de caché de Gradle, de varios GB)
+gradle/*
+!gradle/wrapper/
+gradle/wrapper/*
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+!gradle/libs.versions.toml
+
+# --- Sistema operativo y editores ---------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
+
+# =====================================================================================
+#  AÑADE AQUÍ TUS PROPIAS EXCLUSIONES (una por línea). Ejemplos:
+#    mi_carpeta_privada/
+#    notas_personales.txt
+#    *.psd
+# =====================================================================================
+

@@ -1,0 +1,81 @@
+name: Build release APK
+
+# Se lanza a mano desde GitHub → Actions → "Build release APK" → Run workflow.
+# Compila el APK firmado con tu keystore (secretos del repositorio), SIN claves de API (en la nube no existe
+# local.properties), y lo publica como Release con el nombre fijo "Vixa.apk" para que la web siempre baje la última.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: 'Versión (vacío = la de version.properties, p. ej. 1.2.8)'
+        required: false
+        type: string
+      notes:
+        description: 'Novedades de esta versión (opcional)'
+        required: false
+        type: string
+      prerelease:
+        description: 'Marcar como versión de prueba (pre-release)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Versión
+        id: ver
+        run: |
+          V="${{ inputs.version_name }}"
+          if [ -z "$V" ]; then V=$(grep -oP '^versionName=\K.*' version.properties | tr -d '\r ' ); fi
+          if [ -z "$V" ]; then echo "::error::No hay versión: rellena version.properties o el campo de la Action"; exit 1; fi
+          echo "name=$V" >> "$GITHUB_OUTPUT"
+          echo "Versión: $V"
+
+      - name: Decodificar keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/keystore.jks"
+
+      - name: Permisos de gradlew
+        run: chmod +x gradlew
+
+      - name: Compilar APK de release firmado
+        env:
+          KEYSTORE_FILE: ${{ runner.temp }}/keystore.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew assembleRelease -PversionName=${{ steps.ver.outputs.name }} --no-daemon
+
+      - name: Preparar el APK (nombre fijo)
+        run: |
+          APK=$(ls app/build/outputs/apk/release/*.apk | head -n 1)
+          cp "$APK" Vixa.apk
+          ls -lh Vixa.apk
+
+      - name: Crear la Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.ver.outputs.name }}
+          name: Vixa ${{ steps.ver.outputs.name }}
+          body: ${{ inputs.notes }}
+          prerelease: ${{ inputs.prerelease }}
+          generate_release_notes: ${{ inputs.notes == '' }}
+          files: Vixa.apk

@@ -1,0 +1,15 @@
+# Copia este archivo como "local.properties" (en la raíz del proyecto) y rellénalo. Ese archivo NO se sube a Git.
+# Android Studio crea la línea sdk.dir solo; si compilas desde la consola, ponla tú:
+# sdk.dir=C\:\\Users\\TU_USUARIO\\AppData\\Local\\Android\\Sdk
+
+# Claves de API gratuitas de los recursos online (todas son opcionales).
+# Si las dejas vacías, la app compila igual y las pides desde Ajustes → Personalizar APIs (con enlaces a cada servicio).
+api.pixabay=
+api.pexels=
+api.unsplash=
+api.wallhaven=
+api.coverr=
+api.giphy=
+api.klipy=
+api.jamendo=
+api.freesound=

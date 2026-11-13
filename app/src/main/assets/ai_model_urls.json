@@ -1,0 +1,330 @@
+{
+  "_readme": "Direcciones de descarga de los modelos de IA. 'url' es el origen oficial y 'fallback' una dirección alternativa que se usa SOLO si la primera falla. Ahora 'fallback' es una copia de 'url': cámbiala por tu servidor. Claves: '<id del modelo>/<archivo>'. El archivo alternativo debe ser idéntico byte a byte (se verifica 'size' y 'sha256'; la app los lleva en el código, aquí son solo informativos). Guía completa: MODELOS_IA.md en la raíz del proyecto.",
+  "version": 1,
+  "files": {
+    "vad/silero_vad.onnx": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx",
+      "size": 643854,
+      "sha256": "9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6"
+    },
+    "denoise_dpdfnet/model.onnx": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/speech-enhancement-models/dpdfnet2_48khz_hr.onnx",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/speech-enhancement-models/dpdfnet2_48khz_hr.onnx",
+      "size": 10596848,
+      "sha256": "0b399f8a58dc4d70d8cd97541f5c39869406145193b957d00a03b66070944928"
+    },
+    "denoise_gtcrn/model.onnx": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/speech-enhancement-models/gtcrn_simple.onnx",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/speech-enhancement-models/gtcrn_simple.onnx",
+      "size": 535638,
+      "sha256": "e77603ac0c23dac3227dd2d7135b3a585cbee2679048aecfa886657d3ae1b534"
+    },
+    "uvr_mdx/model.onnx": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/source-separation-models/UVR_MDXNET_9482.onnx",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/source-separation-models/UVR_MDXNET_9482.onnx",
+      "size": 29704738,
+      "sha256": "9d78f8566fa8198065214ab628be1de966a500c57786695aa4b13e2b27a7727d"
+    },
+    "uvr_mdx_hq/model.onnx": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/source-separation-models/UVR-MDX-NET-Voc_FT.onnx",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/source-separation-models/UVR-MDX-NET-Voc_FT.onnx",
+      "size": 66762795,
+      "sha256": "e411182ce2c53541fefdcc99a8f46f2fe03978eb22038b9497c1d9d95a00fad4"
+    },
+    "whisper_tiny/encoder.onnx": {
+      "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-tiny/resolve/main/tiny-encoder.int8.onnx",
+      "fallback": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-tiny/resolve/main/tiny-encoder.int8.onnx",
+      "size": 12937772,
+      "sha256": "d24fb083ae3b1041fc24e97971d60e280c9342201fbb67b0ab428a8b4a51a434"
+    },
+    "whisper_tiny/decoder.onnx": {
+      "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-tiny/resolve/main/tiny-decoder.int8.onnx",
+      "fallback": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-tiny/resolve/main/tiny-decoder.int8.onnx",
+      "size": 89855401,
+      "sha256": "d2fece8dd42771f1df975c6c0445770d0c292bf7547c2cae04a6c0cc57540925"
+    },
+    "whisper_tiny/tokens.txt": {
+      "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-tiny/resolve/main/tiny-tokens.txt",
+      "fallback": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-tiny/resolve/main/tiny-tokens.txt",
+      "size": 816730,
+      "sha256": "b34b360dbb493e781e479794586d661700670d65564001f23024971d1f2fa126"
+    },
+    "whisper_base/encoder.onnx": {
+      "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-base/resolve/main/base-encoder.int8.onnx",
+      "fallback": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-base/resolve/main/base-encoder.int8.onnx",
+      "size": 29120534,
+      "sha256": "0b8fb1304b6109976038efff5ace81720e00386f3ff6b54ee8c75291ca0a1e11"
+    },
+    "whisper_base/decoder.onnx": {
+      "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-base/resolve/main/base-decoder.int8.onnx",
+      "fallback": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-base/resolve/main/base-decoder.int8.onnx",
+      "size": 130672026,
+      "sha256": "9759d217388a01b3a4c7c15533201067b48ae819c4daafc8624e64b9409dc02d"
+    },
+    "whisper_base/tokens.txt": {
+      "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-base/resolve/main/base-tokens.txt",
+      "fallback": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-base/resolve/main/base-tokens.txt",
+      "size": 816730,
+      "sha256": "b34b360dbb493e781e479794586d661700670d65564001f23024971d1f2fa126"
+    },
+    "whisper_small/encoder.onnx": {
+      "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-small/resolve/main/small-encoder.int8.onnx",
+      "fallback": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-small/resolve/main/small-encoder.int8.onnx",
+      "size": 112442483,
+      "sha256": "4cbe7b22fa9026b843b60a68640c747de05bafb1a11b57edc0e66c232d9f33a9"
+    },
+    "whisper_small/decoder.onnx": {
+      "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-small/resolve/main/small-decoder.int8.onnx",
+      "fallback": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-small/resolve/main/small-decoder.int8.onnx",
+      "size": 262226114,
+      "sha256": "acad50b5c782696e91b55914cc5ab4f756f1532f76e22aa6fc615f39fb69a8ee"
+    },
+    "whisper_small/tokens.txt": {
+      "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-small/resolve/main/small-tokens.txt",
+      "fallback": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-small/resolve/main/small-tokens.txt",
+      "size": 816730,
+      "sha256": "b34b360dbb493e781e479794586d661700670d65564001f23024971d1f2fa126"
+    },
+    "tts_es_ES-davefx-medium/es_ES-davefx-medium.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-es_ES-davefx-medium.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-es_ES-davefx-medium.tar.bz2",
+      "size": 67184952,
+      "sha256": "a3f6beb54a9cb893279f72978a22f807a4d9fc9c7848157b524d5cc7b7f58b22"
+    },
+    "tts_es_ES-sharvard-medium/es_ES-sharvard-medium.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-es_ES-sharvard-medium.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-es_ES-sharvard-medium.tar.bz2",
+      "size": 80318184,
+      "sha256": "b30a7a83df0518f0ee1c7039506648cade99f1f9b498fc49ed2ced2e2536bb5a"
+    },
+    "tts_es_ES-carlfm-x_low/es_ES-carlfm-x_low.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-es_ES-carlfm-x_low.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-es_ES-carlfm-x_low.tar.bz2",
+      "size": 26520563,
+      "sha256": "15585c5add2ab1915ce69e8c966c7c9fb0b6afb21f9b92f18110fda5a4787f99"
+    },
+    "tts_es_ES-miro-high/es_ES-miro-high.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-es_ES-miro-high.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-es_ES-miro-high.tar.bz2",
+      "size": 67162898,
+      "sha256": "15c7593c9e6eed29b48df983708672091c6ce3556485f351c2eb917cf3e5c2db"
+    },
+    "tts_es_MX-ald-medium/es_MX-ald-medium.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-es_MX-ald-medium.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-es_MX-ald-medium.tar.bz2",
+      "size": 67196497,
+      "sha256": "c60cf7bc853eb01a875fba0756523fecf9d9f46c763b19785d223fc981fb4fb6"
+    },
+    "tts_es_MX-claude-high/es_MX-claude-high.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-es_MX-claude-high.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-es_MX-claude-high.tar.bz2",
+      "size": 67207890,
+      "sha256": "ec33fb689c248fe64810aab564cba97babf0f506672cfd404928d46e751a4721"
+    },
+    "tts_es_AR-daniela-high/es_AR-daniela-high.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-es_AR-daniela-high.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-es_AR-daniela-high.tar.bz2",
+      "size": 115562134,
+      "sha256": "71cbf6b7f646ab74f3c51336151abef41e6c54467ac929ffdb19ed706a07dd7b"
+    },
+    "tts_en_US-amy-medium/en_US-amy-medium.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-amy-medium.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-amy-medium.tar.bz2",
+      "size": 67223746,
+      "sha256": "9a5d1fc497f85e8022b785bff5f8105203b1e33099ee6265203efc70b0cb0264"
+    },
+    "tts_en_US-ryan-medium/en_US-ryan-medium.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-ryan-medium.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-ryan-medium.tar.bz2",
+      "size": 67213100,
+      "sha256": "c546af78b6395b4e7c4ce1ed899438b64426a362f5d4ec5fecd090ded9ad7505"
+    },
+    "tts_en_US-lessac-medium/en_US-lessac-medium.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-lessac-medium.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-lessac-medium.tar.bz2",
+      "size": 67230653,
+      "sha256": "9e3febfacf0abf4270172d2958bcec246032b7e88efc2720840cc80c93de334e"
+    },
+    "tts_en_US-kristin-medium/en_US-kristin-medium.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-kristin-medium.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-kristin-medium.tar.bz2",
+      "size": 67259230,
+      "sha256": "c2206f572df2956c50b1ae3367eebce3853c663e890cba8048cd62b1e4dbe6c7"
+    },
+    "tts_en_US-hfc_female-medium/en_US-hfc_female-medium.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-hfc_female-medium.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-hfc_female-medium.tar.bz2",
+      "size": 67228166,
+      "sha256": "3fffdceb0c65bd9415a085d09c3cb88cc82f9d74a6ca453f8ce7fc5eaee81ff8"
+    },
+    "tts_en_US-hfc_male-medium/en_US-hfc_male-medium.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-hfc_male-medium.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-hfc_male-medium.tar.bz2",
+      "size": 67214049,
+      "sha256": "76388f84acfca8ba5c0ed1636a26ada14c598abd52e76f110d4756fe326fc5f2"
+    },
+    "tts_en_US-joe-medium/en_US-joe-medium.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-joe-medium.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-joe-medium.tar.bz2",
+      "size": 67169394,
+      "sha256": "261b903a1fb2ce621e2b5b14233cd41223c3b9f9590f896c11daee4df22d9bd3"
+    },
+    "tts_en_US-kathleen-low/en_US-kathleen-low.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-kathleen-low.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-kathleen-low.tar.bz2",
+      "size": 67118360,
+      "sha256": "3dd0adaf077e19de32876608c3ac3d4a0a46a6f06310cc7a5633b3b47d762cde"
+    },
+    "tts_en_GB-alan-medium/en_GB-alan-medium.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_GB-alan-medium.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_GB-alan-medium.tar.bz2",
+      "size": 67220121,
+      "sha256": "a48d4017da0f77668b27bed63fe6e04dd64c6397e1fadad4f460efb0ef7c9012"
+    },
+    "tts_en_GB-jenny_dioco-medium/en_GB-jenny_dioco-medium.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_GB-jenny_dioco-medium.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_GB-jenny_dioco-medium.tar.bz2",
+      "size": 67225842,
+      "sha256": "a0888024569bafbefc05a4b48ddf8419d8dbbf3205f4af37cf7c6f1a87cc20c5"
+    },
+    "tts_en_GB-alba-medium/en_GB-alba-medium.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_GB-alba-medium.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_GB-alba-medium.tar.bz2",
+      "size": 67212349,
+      "sha256": "fcd45962906933eec4431d3688f7d74aaac8713c87c6717f91fd3b23463aa1a1"
+    },
+    "tts_en_GB-southern_english_female-medium/en_GB-southern_english_female-medium.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_GB-southern_english_female-medium.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_GB-southern_english_female-medium.tar.bz2",
+      "size": 80275090,
+      "sha256": "cea2dcbe8a8e2a44a4bab6824e10dc38fcd5cf84458e8b3f3e5be1c5fb804512"
+    },
+    "tts_en_GB-cori-medium/en_GB-cori-medium.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_GB-cori-medium.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_GB-cori-medium.tar.bz2",
+      "size": 67257412,
+      "sha256": "49c9a5361bbdd95d7ca9687c4de11e5908481f65e7c7c368960df79949fdac2b"
+    },
+    "tts_fr_FR-siwis-medium/fr_FR-siwis-medium.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-fr_FR-siwis-medium.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-fr_FR-siwis-medium.tar.bz2",
+      "size": 67207459,
+      "sha256": "375909aa30842b3a4efa10b1beb1d761af792960ae6873b4d53889f96c66195b"
+    },
+    "tts_fr_FR-tom-medium/fr_FR-tom-medium.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-fr_FR-tom-medium.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-fr_FR-tom-medium.tar.bz2",
+      "size": 67202955,
+      "sha256": "3d8258ef8466b5d5f2cc46c06e1415d3d01c9cbaeed8b6d5b3d152073672472c"
+    },
+    "tts_fr_FR-upmc-medium/fr_FR-upmc-medium.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-fr_FR-upmc-medium.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-fr_FR-upmc-medium.tar.bz2",
+      "size": 80422639,
+      "sha256": "e9830a331a16f6cc5ef3116a287065e015d3495c3f56b974889a266da7f89a7f"
+    },
+    "tts_de_DE-thorsten-medium/de_DE-thorsten-medium.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-de_DE-thorsten-medium.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-de_DE-thorsten-medium.tar.bz2",
+      "size": 67214254,
+      "sha256": "50487d9c95fdf2191f31d2588569381063ba1591dcd4c7d4bdd30f12b2191714"
+    },
+    "tts_de_DE-eva_k-x_low/de_DE-eva_k-x_low.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-de_DE-eva_k-x_low.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-de_DE-eva_k-x_low.tar.bz2",
+      "size": 26521242,
+      "sha256": "daec8658456d8e5ec714972f2e5a71f8a84d58b974db396f4eaeace0df06455a"
+    },
+    "tts_de_DE-ramona-low/de_DE-ramona-low.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-de_DE-ramona-low.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-de_DE-ramona-low.tar.bz2",
+      "size": 67084795,
+      "sha256": "79f985c10f86c4d58205b519abc488aa65eb713d54665ff729880a02e2625a42"
+    },
+    "tts_it_IT-paola-medium/it_IT-paola-medium.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-it_IT-paola-medium.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-it_IT-paola-medium.tar.bz2",
+      "size": 67221173,
+      "sha256": "7541f75778afa164e44e34baaef63befad7698595df26a95ca944b63ef1a16b4"
+    },
+    "tts_it_IT-riccardo-x_low/it_IT-riccardo-x_low.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-it_IT-riccardo-x_low.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-it_IT-riccardo-x_low.tar.bz2",
+      "size": 26496614,
+      "sha256": "8ad0791558ae2b3e96054fc5756ae3ae2f6457fb1765bc01f43bbab85e0a7021"
+    },
+    "tts_pt_BR-faber-medium/pt_BR-faber-medium.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-pt_BR-faber-medium.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-pt_BR-faber-medium.tar.bz2",
+      "size": 67183065,
+      "sha256": "7add3f923ad6bc25ca8a192805fd1a64d1b3893e4611c4a9719545a825039a83"
+    },
+    "tts_pt_BR-cadu-medium/pt_BR-cadu-medium.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-pt_BR-cadu-medium.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-pt_BR-cadu-medium.tar.bz2",
+      "size": 67207562,
+      "sha256": "aba78157d4b89acc17ddef15a70f4b2474f4c189d4de6035002ac7fec9d5d303"
+    },
+    "tts_pt_PT-tugao-medium/pt_PT-tugao-medium.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-pt_PT-tugao-medium.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-pt_PT-tugao-medium.tar.bz2",
+      "size": 67195014,
+      "sha256": "6b4f0a7bfc957bef26d6ac0703a8fa1ba659c8ab2df8b294f20206551859070c"
+    },
+    "tts_ca_ES-upc_ona-medium/ca_ES-upc_ona-medium.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-ca_ES-upc_ona-medium.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-ca_ES-upc_ona-medium.tar.bz2",
+      "size": 67223188,
+      "sha256": "b6c50f22e13cfc72ce51c496d22b987adf6704047f6d342968197b4b0b3127a5"
+    },
+    "tts_nl_NL-alex-medium/nl_NL-alex-medium.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-nl_NL-alex-medium.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-nl_NL-alex-medium.tar.bz2",
+      "size": 67172584,
+      "sha256": "52be645a8617eda0e592c604eb67f419fcb09376310c3ec7fc781beeb8e84bb6"
+    },
+    "tts_pl_PL-gosia-medium/pl_PL-gosia-medium.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-pl_PL-gosia-medium.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-pl_PL-gosia-medium.tar.bz2",
+      "size": 67211182,
+      "sha256": "75bd34dcbdc4dd98d763954756b4b34b4208100497c836381542e4d73dcefa9c"
+    },
+    "tts_pl_PL-darkman-medium/pl_PL-darkman-medium.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-pl_PL-darkman-medium.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-pl_PL-darkman-medium.tar.bz2",
+      "size": 67215635,
+      "sha256": "444727aa46eb6db645a2bc88fe73868e4bd7596b7f56ca39fad5ef53c41210d4"
+    },
+    "tts_ru_RU-denis-medium/ru_RU-denis-medium.tar.bz2": {
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-ru_RU-denis-medium.tar.bz2",
+      "fallback": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-ru_RU-denis-medium.tar.bz2",
+      "size": 67190991,
+      "sha256": "efa4c18e0b5e32b81d1b6df36b9d312831e5d545200e27848ef926a4cd930300"
+    },
+    "selfie/model.tflite": {
+      "url": "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite",
+      "fallback": "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite",
+      "size": 249537,
+      "sha256": "191ac9529ae506ee0beefa6b2c945a172dab9d07d1e802a290a4e4038226658b"
+    },
+    "selfie_multiclass/model.tflite": {
+      "url": "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/latest/selfie_multiclass_256x256.tflite",
+      "fallback": "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/latest/selfie_multiclass_256x256.tflite",
+      "size": 16371837,
+      "sha256": "c6748b1253a99067ef71f7e26ca71096cd449baefa8f101900ea23016507e0e0"
+    },
+    "face_landmarker/model.task": {
+      "url": "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task",
+      "fallback": "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task",
+      "size": 3758596,
+      "sha256": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff"
+    },
+    "magic_touch/model.tflite": {
+      "url": "https://storage.googleapis.com/mediapipe-models/interactive_segmenter/magic_touch/float32/latest/magic_touch.tflite",
+      "fallback": "https://storage.googleapis.com/mediapipe-models/interactive_segmenter/magic_touch/float32/latest/magic_touch.tflite",
+      "size": 6227884,
+      "sha256": "e24338a717c1b7ad8d159666677ef400babb7f33b8ad60c4d96db4ecf694cd25"
+    }
+  }
+}

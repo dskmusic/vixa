@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Versión monocroma (icono temático): fotograma con perforaciones, montañas y botón de reproducción. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Marco con las dos tiras de película (anillo exterior + bandas), hueco en el centro -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M30,27h48a7,7 0,0 1,7 7v40a7,7 0,0 1,-7 7h-48a7,7 0,0 1,-7 -7v-40a7,7 0,0 1,7 -7zM23,37v34h62v-34z" />
+    <!-- Perforaciones (se recortan de las bandas con regla par-impar) -->
+    <path
+        android:fillColor="#FF1E2433"
+        android:pathData="M28,30h6v4h-6z M39,30h6v4h-6z M50,30h6v4h-6z M61,30h6v4h-6z M72,30h6v4h-6z M28,74h6v4h-6z M39,74h6v4h-6z M50,74h6v4h-6z M61,74h6v4h-6z M72,74h6v4h-6z" />
+    <!-- Montañas -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M23,71l17,-19l12,14l8,-9l25,14z" />
+    <!-- Botón de reproducción -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M54,43a11,11 0,1 0,0.01 0zM50,48l12,6l-12,6z"
+        android:fillType="evenOdd" />
+</vector>
