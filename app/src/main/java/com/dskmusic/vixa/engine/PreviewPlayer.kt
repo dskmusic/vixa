@@ -17,6 +17,7 @@ import com.dskmusic.vixa.model.Clip
 import com.dskmusic.vixa.model.ClipKind
 import com.dskmusic.vixa.model.TrackType
 import com.dskmusic.vixa.model.Project
+import kotlin.math.abs
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -101,6 +102,14 @@ class PreviewPlayer(context: Context) {
     private var leadUs = 150_000L
     private var rebuiltAtMs = 0L
 
+    /**
+     * Audio aparte: un reproductor solo de audio que suena continuo, sin relevos. Los de vídeo van sin audio. Así el relevo
+     * (que salta/solapa 0-100 ms) ya no se oye. Si algo va mal en el audio, poner false: vuelve al audio dentro de cada reproductor.
+     */
+    private val SPLIT_AUDIO = true
+    private var audio: CompositionPlayer? = null
+    private var audioDirty = true
+
     /** Reproductor saliente de un relevo: se libera un instante después para no bloquear el hilo principal justo en el corte. */
     private var dying: CompositionPlayer? = null
     private var dyingSlot = -1
@@ -176,7 +185,66 @@ class PreviewPlayer(context: Context) {
             _error.value = error.errorCodeName + ": " + chain
             wantPlay = false
             _playing.value = false
+            try { audio?.pause() } catch (_: Throwable) {}
             releasePlayer()
+        }
+    }
+
+    private val audioListener = object : Player.Listener {
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            if (playbackState == Player.STATE_ENDED) audioDirty = true
+        }
+
+        override fun onPlayerError(error: PlaybackException) {
+            ErrorLog.log("Preview", error)
+            Log.d(TAG, "audio aparte: error (${error.errorCodeName}), se reconstruye")
+            audioDirty = true
+            handler.post {
+                releaseAudio()
+                if (wantPlay && !released && retries < 4) { retries++; scheduleRebuild(0, quiet = true, why = "audio-error") }
+            }
+        }
+    }
+
+    private fun audioPosUs(): Long? = audio?.let { try { it.currentPosition * 1000L } catch (_: Throwable) { null } }
+
+    private fun releaseAudio() {
+        val a = audio ?: return
+        audio = null
+        a.removeListener(audioListener)
+        kill(a)
+    }
+
+    private fun buildAudio(project: Project, posUs: Long) {
+        releaseAudio()
+        val (w, h) = canvasSize(project)
+        val built = CompositionBuilder.build(app, project, { live }, BuildOptions(w, h, mediaPath, reversedPath, includeVideo = false))
+        val a = CompositionPlayer.Builder(app).build()
+        try {
+            a.addListener(audioListener)
+            a.setComposition(built.composition, (posUs / 1000L).coerceIn(0, (built.durationUs / 1000L - 1).coerceAtLeast(0)))
+            a.prepare()
+            a.playWhenReady = wantPlay
+        } catch (e: Throwable) {
+            a.removeListener(audioListener)
+            kill(a)
+            throw e
+        }
+        audio = a
+        audioDirty = false
+    }
+
+    /** Deja el audio donde toca: lo (re)crea si cambió el proyecto; si no, solo lo recoloca si se aleja de [posUs]. */
+    private fun syncAudio(project: Project, posUs: Long) {
+        try {
+            val a = audio
+            if (a == null || audioDirty) { buildAudio(project, posUs); return }
+            if (abs(a.currentPosition * 1000L - posUs) > 150_000L) a.seekTo(posUs / 1000L)
+            a.playWhenReady = wantPlay
+        } catch (e: Throwable) {
+            ErrorLog.log("Preview", e)
+            releaseAudio()
+            audioDirty = true
         }
     }
 
@@ -194,8 +262,12 @@ class PreviewPlayer(context: Context) {
                 return
             }
             if (p != null && wantPlay && !rebuildPending) {
-                val pos = p.currentPosition * 1000L
-                _positionUs.value = pos.coerceIn(0, live.durationUs.coerceAtLeast(0))
+                val vpos = p.currentPosition * 1000L
+                val apos = audioPosUs()
+                // Con audio aparte, el reloj que se enseña es el del audio (continuo, sin saltos en los relevos). Para no cruzar
+                // un corte vale el que vaya por delante.
+                val pos = if (apos != null) maxOf(apos, vpos) else vpos
+                _positionUs.value = (apos ?: vpos).coerceIn(0, live.durationUs.coerceAtLeast(0))
                 val prev = prevPosUs
                 prevPosUs = pos
                 // Corte que este reproductor no debe cruzar, si cae en los próximos ~30 ms.
@@ -208,9 +280,10 @@ class PreviewPlayer(context: Context) {
                     val moving = try { n.p.currentPosition * 1000L > n.atUs } catch (t: Throwable) { false }
                     if (moving) {
                         val lat = (now - n.startedMs) * 1000L
-                        // Sube de golpe y baja despacio: el arranque baila (medido 47-229 ms). Si el adelanto se pasa, el relevo
-                        // salta 2-3 fotogramas (apenas se ve en un corte); si se queda corto, la imagen se congela (se ve más).
-                        leadUs = maxOf(lat, (leadUs + lat) / 2).coerceIn(30_000L, 250_000L)
+                        // Media móvil de lo que tarda en arrancar (medido 47-229 ms). Si el adelanto se pasa, el relevo SALTA contenido
+                        // (se nota como un acelerón: medido ~100 ms); si se queda corto, la imagen se congela. La media equilibra ambos.
+                        // No volver a sesgarlo hacia arriba (maxOf): causaba saltos de ~100 ms en los cortes.
+                        leadUs = ((leadUs + lat) / 2).coerceIn(30_000L, 250_000L)
                         Log.d(TAG, "relevo: arranque en ${lat / 1000}ms (viejo en ${pos / 1000}ms); próximo adelanto ${leadUs / 1000}ms")
                         relay(n)
                     } else if (now - n.startedMs > 600) {
@@ -302,7 +375,8 @@ class PreviewPlayer(context: Context) {
 
     /** Último recurso en un corte: reproductor nuevo justo en [b], sin indicador de carga. */
     private fun cutRebuild(b: Long, now: Long, why: String) {
-        _positionUs.value = b.coerceIn(0, live.durationUs.coerceAtLeast(0))
+        // El audio sigue sonando sin interrupción: el vídeo se reconstruye donde está el audio.
+        _positionUs.value = (audioPosUs() ?: b).coerceIn(0, live.durationUs.coerceAtLeast(0))
         prevPosUs = b
         quietUntilMs = now + 900
         scheduleRebuild(0, quiet = true, why = why)
@@ -431,9 +505,9 @@ class PreviewPlayer(context: Context) {
         return w to h
     }
 
-    private fun options(p: Project, run: Int = -1): BuildOptions {
+    private fun options(p: Project, run: Int = -1, withAudio: Boolean = true): BuildOptions {
         val (w, h) = canvasSize(p)
-        return BuildOptions(w, h, mediaPath, reversedPath, soloRun = run)
+        return BuildOptions(w, h, mediaPath, reversedPath, includeAudio = withAudio, soloRun = run)
     }
 
     /** Superficie de vídeo [slot] (TextureView: sigue al layout de Compose). Con una sola (slot 0) no hay relevos. */
@@ -470,6 +544,7 @@ class PreviewPlayer(context: Context) {
         val structural = CompositionBuilder.structureKey(project, options(project)) != CompositionBuilder.structureKey(live, options(live))
         live = project
         if (released) return
+        if (structural) audioDirty = true
         if (structural || !wantPlay) scheduleRebuild(if (immediate) 0 else if (structural) 180 else 120, why = "update structural=$structural wantPlay=$wantPlay")
     }
 
@@ -492,7 +567,7 @@ class PreviewPlayer(context: Context) {
 
     /** Crea un reproductor para [seg] en [posUs] sobre la superficie [slot]. Devuelve también si quedó de una sola entrada. */
     private fun create(project: Project, posUs: Long, seg: Seg, slot: Int, l: Player.Listener, play: Boolean): Pair<CompositionPlayer, Boolean> {
-        val built = CompositionBuilder.build(app, project, { live }, options(project, seg.run))
+        val built = CompositionBuilder.build(app, project, { live }, options(project, seg.run, withAudio = !SPLIT_AUDIO))
         val f = CompositionBuilder.frameProcessorFactory()
         val p = CompositionPlayer.Builder(app)
             .setVideoGraphFactory(if (built.singleInput) SingleInputVideoGraph.Factory(f) else MultipleInputVideoGraph.Factory(f))
@@ -534,6 +609,7 @@ class PreviewPlayer(context: Context) {
                 }
             }
             Log.d(TAG, "rebuild pos=${pos / 1000}ms play=$wantPlay scrub=$scrubbing tramo=${seg.run} why=$lastWhy")
+            if (SPLIT_AUDIO) syncAudio(project, pos)
             val (p, single) = create(project, pos, seg, front, listener, wantPlay)
             player = p
             curRun = if (single) seg.run else -1
@@ -620,6 +696,7 @@ class PreviewPlayer(context: Context) {
         _playing.value = true
         resetSlow(1500)
         player?.play()
+        audio?.play()
     }
 
     /** Salta a [us] y reproduce (vista previa de transiciones, etc.). */
@@ -639,8 +716,10 @@ class PreviewPlayer(context: Context) {
         wantPlay = false
         _playing.value = false
         cancelRelay()
+        val apos = audioPosUs()
+        try { audio?.pause() } catch (e: Throwable) { ErrorLog.log("Preview", e) }
         player?.let {
-            try { it.pause(); _positionUs.value = (it.currentPosition * 1000L).coerceIn(0, live.durationUs.coerceAtLeast(0)) } catch (e: Throwable) { ErrorLog.log("Preview", e) }
+            try { it.pause(); _positionUs.value = (apos ?: (it.currentPosition * 1000L)).coerceIn(0, live.durationUs.coerceAtLeast(0)) } catch (e: Throwable) { ErrorLog.log("Preview", e) }
         }
     }
 
@@ -659,7 +738,7 @@ class PreviewPlayer(context: Context) {
             scheduleRebuild(if (scrubbing) 120 else 0, why = "seek player=${p != null} poisoned=$poisoned pending=$rebuildPending tramo=$curRun")
             return
         }
-        try { p.seekTo(t / 1000L); if (wantPlay) p.play() } catch (e: Throwable) { ErrorLog.log("Preview", e); scheduleRebuild(0, why = "seek-exception") }
+        try { if (!scrubbing) audio?.seekTo(t / 1000L); p.seekTo(t / 1000L); if (wantPlay) p.play() } catch (e: Throwable) { ErrorLog.log("Preview", e); scheduleRebuild(0, why = "seek-exception") }
     }
 
     fun stepFrames(n: Int) {
@@ -737,6 +816,8 @@ class PreviewPlayer(context: Context) {
         rebuildPending = false
         handler.removeCallbacksAndMessages(null)
         releasePlayer()
+        releaseAudio()
+        audioDirty = true
     }
 
     companion object {
