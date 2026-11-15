@@ -37,9 +37,15 @@ class BuildOptions(
     val reversedPath: (Clip) -> String? = { null },
     val includeVideo: Boolean = true,
     val includeAudio: Boolean = true,
+    /**
+     * Solo vista previa: si es >= 0, el vídeo es ÚNICAMENTE ese tramo de la pista principal (los clips seguidos entre dos
+     * transiciones), como una sola secuencia para SingleInputVideoGraph. Con una entrada el cambio natural de clip funciona;
+     * con el compositor de varias entradas no (androidx/media #3533). Ver PreviewPlayer.
+     */
+    val soloRun: Int = -1,
 )
 
-class Built(val composition: Composition, val durationUs: Long, val ctx: RenderCtx)
+class Built(val composition: Composition, val durationUs: Long, val ctx: RenderCtx, val singleInput: Boolean = false)
 
 /** Velocidad por tramos sobre el tiempo del medio (relativo al inicio del recorte). */
 private class SegmentedSpeed(private val speeds: FloatArray, private val spanUs: Long) : SpeedProvider {
@@ -120,6 +126,9 @@ object CompositionBuilder {
         val fps = structure.fps.coerceIn(1, 120)
         val totalUs = structure.durationUs.coerceAtLeast(500_000L)
         val sequences = ArrayList<EditedMediaItemSequence>()
+        var singleInput = false
+        // Tramos de la pista principal: uno nuevo en cada clip que entra con transición (misma cuenta que PreviewPlayer.plan).
+        val runs = ArrayList<ArrayList<Pair<Clip, EditedMediaItem>>>()
 
         fun imageItem(uri: Uri, durationUs: Long, effects: List<Effect>): EditedMediaItem {
             val ms = (durationUs / 1000L).coerceAtLeast(1)
@@ -201,11 +210,15 @@ object CompositionBuilder {
                         val outId = t.clips.getOrNull(i + 1)?.transitionIn?.id ?: ""
                         val item = visualItem(c, true, laneIdx == 0, outId)
                         if (laneIdx == 0) a.add(c to item) else bLane.add(c to item)
+                        if (runs.isEmpty() || (i > 0 && c.transitionIn != null)) runs.add(ArrayList())
+                        runs.last().add(c to item)
                     }
                     lane(a)?.let { sequences.add(it) }
                     lane(bLane)?.let { sequences.add(it) }
                 }
             }
+            // Una sola entrada: solo el tramo pedido, sin base (el carril ya rellena los huecos con blanco hasta el final).
+            if (o.soloRun >= 0) lane(runs.getOrNull(o.soloRun) ?: emptyList())?.let { sequences.clear(); sequences.add(it); singleInput = true }
         }
 
         if (o.includeAudio) {
@@ -264,11 +277,13 @@ object CompositionBuilder {
             override fun getOverlaySettings(inputId: Int, presentationTimeUs: Long): OverlaySettings = object : OverlaySettings {}
         }
 
-        val composition = Composition.Builder(sequences)
+        val builder = Composition.Builder(sequences)
             .setEffects(Effects(emptyList(), compEffects))
-            .setVideoCompositorSettings(settings)
             .setHdrMode(Composition.HDR_MODE_TONE_MAP_HDR_TO_SDR_USING_OPEN_GL)
-            .build()
-        return Built(composition, totalUs, ctx)
+        // SingleInputVideoGraph no usa compositor y lanza IllegalArgumentException si se le dan VideoCompositorSettings.
+        // Con una sola entrada no hace falta: ClipEffect ya devuelve fotogramas del tamaño del lienzo.
+        if (!singleInput) builder.setVideoCompositorSettings(settings)
+        val composition = builder.build()
+        return Built(composition, totalUs, ctx, singleInput)
     }
 }

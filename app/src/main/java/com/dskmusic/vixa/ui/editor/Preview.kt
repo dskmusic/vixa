@@ -7,6 +7,8 @@ import android.graphics.RectF
 import android.graphics.SurfaceTexture
 import android.view.Surface
 import android.view.TextureView
+import android.widget.FrameLayout
+import com.dskmusic.vixa.engine.PreviewPlayer
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -22,6 +24,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -35,8 +38,6 @@ import androidx.compose.material.icons.filled.Grid4x4
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
@@ -217,35 +218,44 @@ fun Preview(vm: EditorViewModel, project: Project, modifier: Modifier = Modifier
         // coger tiradores y elementos que sobresalen del vídeo. El zoom se aplica a todo a la vez (mismo centro).
         Box(Modifier.fillMaxSize().graphicsLayer { scaleX = viewZoom; scaleY = viewZoom; translationX = panX; translationY = panY }, contentAlignment = Alignment.Center) {
           Box(Modifier.size(with(density) { vw.toDp() }, with(density) { vh.toDp() })) {
+            // Varias TextureView apiladas (una superficie por reproductor): el relevo entre reproductores trae al frente la
+            // del que entra. Todas se dibujan siempre (la de detrás debe pintar su primer fotograma antes del relevo).
+            val frontSlot by vm.player.frontSlot.collectAsState()
+            val views = remember { arrayOfNulls<TextureView>(PreviewPlayer.SLOTS) }
             AndroidView(
                 factory = { ctx ->
-                    TextureView(ctx).apply {
-                        var s: Surface? = null
+                    FrameLayout(ctx).apply {
                         // Captura del fotograma actual (con filtros, efectos y capas) para la miniatura del proyecto.
                         vm.previewShot = {
                             try {
-                                if (!isAvailable || width < 2 || height < 2) null
+                                val v = views[vm.player.frontSlot.value]
+                                if (v == null || !v.isAvailable || v.width < 2 || v.height < 2) null
                                 else {
-                                    val k = minOf(1f, 360f / maxOf(width, height))
-                                    getBitmap((width * k).toInt().coerceAtLeast(2), (height * k).toInt().coerceAtLeast(2))
+                                    val k = minOf(1f, 360f / maxOf(v.width, v.height))
+                                    v.getBitmap((v.width * k).toInt().coerceAtLeast(2), (v.height * k).toInt().coerceAtLeast(2))
                                 }
                             } catch (e: Throwable) { null }
                         }
-                        surfaceTextureListener = object : TextureView.SurfaceTextureListener {
-                            override fun onSurfaceTextureAvailable(st: SurfaceTexture, w: Int, h: Int) {
-                                s = Surface(st); vm.player.attach(s, w, h)
+                        for (slot in 0 until PreviewPlayer.SLOTS) addView(TextureView(ctx).apply {
+                            var s: Surface? = null
+                            surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+                                override fun onSurfaceTextureAvailable(st: SurfaceTexture, w: Int, h: Int) {
+                                    s = Surface(st); vm.player.attach(s, w, h, slot)
+                                }
+                                override fun onSurfaceTextureSizeChanged(st: SurfaceTexture, w: Int, h: Int) { vm.player.attach(s, w, h, slot) }
+                                override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean {
+                                    s?.let { vm.player.detach(it, slot); it.release() }
+                                    s = null
+                                    if (slot == 0) vm.previewShot = null
+                                    return true
+                                }
+                                override fun onSurfaceTextureUpdated(st: SurfaceTexture) { vm.player.onFrame(slot) }
                             }
-                            override fun onSurfaceTextureSizeChanged(st: SurfaceTexture, w: Int, h: Int) { vm.player.attach(s, w, h) }
-                            override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean {
-                                s?.let { vm.player.detach(it); it.release() }
-                                s = null
-                                vm.previewShot = null
-                                return true
-                            }
-                            override fun onSurfaceTextureUpdated(st: SurfaceTexture) {}
-                        }
+                            views[slot] = this
+                        }, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
                     }
                 },
+                update = { views[frontSlot]?.bringToFront() },
                 modifier = Modifier.fillMaxSize(),
             )
           }
@@ -474,18 +484,18 @@ fun Transport(vm: EditorViewModel, project: Project, modifier: Modifier = Modifi
     Row(modifier.fillMaxWidth().height(44.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
         Text(formatTime(positionUs) + " / " + formatTime(project.durationUs), style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(start = 8.dp))
         val selClip = vm.selection.collectAsState().value.singleOrNull()?.let { project.clip(it) }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton({ if (full) vm.player.seekTo(0L) else vm.player.stepFrames(-1) }) { Icon(Icons.Default.SkipPrevious, stringResource(R.string.prev_frame)) }
-            FilledIconButton({ vm.player.toggle() }, Modifier.size(38.dp)) {
-                Icon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow, stringResource(R.string.play_pause))
-            }
-            IconButton({ if (full) vm.player.seekTo(project.durationUs) else vm.player.stepFrames(1) }) { Icon(Icons.Default.SkipNext, stringResource(R.string.next_frame)) }
+        // Play, hueco con el keyframe centrado y, a la derecha, bucle/guías/pantalla completa.
+        Spacer(Modifier.weight(1f))
+        FilledIconButton({ vm.player.toggle() }, Modifier.size(38.dp)) {
+            Icon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow, stringResource(R.string.play_pause))
+        }
+        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
             // Keyframe global: fija TODAS las propiedades animables del clip seleccionado en este instante (o las quita).
             val kfClip = selClip
             val kfLocal = if (kfClip != null) (positionUs - kfClip.startUs).coerceIn(0, kfClip.durationUs) else 0L
             val kfPos = if (kfClip != null) kfLocal.toFloat() / kfClip.durationUs.coerceAtLeast(1) else 0f
             val kfHere = kfClip != null && (kfClip.keyframes.keys.any { kfClip.keyframeNear(it, kfLocal) != null } || kfClip.speedCurve.any { abs(it.pos - kfPos) < 0.02f })
-            IconButton({
+            if (!full) IconButton({
                 if (kfClip != null) vm.updateClip(R.string.hist_keyframe, kfClip.id) { k ->
                     val props = (listOf("x", "y", "scale", "rotation", "opacity", "brightness", "contrast", "saturation", "exposure", "temperature", "tint", "vibrance", "hue") +
                         (if (k.audible || k.kind == ClipKind.AUDIO) listOf("volume") else emptyList()) + k.keyframes.keys).distinct()

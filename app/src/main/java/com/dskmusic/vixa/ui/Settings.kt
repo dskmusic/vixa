@@ -186,7 +186,7 @@ fun SettingsScreen(container: AppContainer, onBack: () -> Unit, onTutorial: () -
                             for (c in listOf(0xFF3A3A44, 0xFF2A2A30, 0xFF55555F, 0xFF808089, 0xFF000000)) ColorDot(c.toInt(), c.toInt() == s.workspaceColor) { upd { it.copy(workspaceColor = c.toInt()) } }
                         }
                         Label(stringResource(R.string.preview_quality))
-                        ChipRow(listOf(360, 540, 720, 1080), s.previewSide, { it.toString() + "p" }) { q -> upd { it.copy(previewSide = q) } }
+                        ChipRow(listOf(180, 240, 360, 540, 720, 1080), s.previewSide, { it.toString() + "p" }) { q -> upd { it.copy(previewSide = q) } }
                     }
                     Group(stringResource(R.string.fx_sample_title)) {
                         Text(stringResource(R.string.fx_sample_note), Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -263,7 +263,7 @@ fun SettingsScreen(container: AppContainer, onBack: () -> Unit, onTutorial: () -
                         StorageRow(stringResource(R.string.storage_downloads), sizes[2]) { scope.launch { withContext(Dispatchers.IO) { container.online.clearDownloads() }; sizeTick++ } }
                     }
                     Group(stringResource(R.string.set_help)) {
-                        Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FlowRow(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedButton({ log = true }) { Text(stringResource(R.string.error_log)) }
                             OutlinedButton(onTutorial) { Text(stringResource(R.string.view_tutorial)) }
                             OutlinedButton(onHelp) { Text(stringResource(R.string.help_full)) }

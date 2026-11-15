@@ -110,10 +110,13 @@ vec4 tex(vec2 su) { return texture2D(uTex, vec2(su.x, 1.0 - su.y)); }
 vec4 blurTex(vec2 su, float r) {
   vec4 acc = tex(su);
   float asp = uSrc.y / max(uSrc.x, 0.000001);
+  // Espiral áurea: el ángulo se acumula girando por un paso constante (sin cos/sin por muestra).
+  vec2 dir = vec2(1.0, 0.0);
+  const vec2 rot = vec2(-0.7373688, 0.6754632);
   for (int i = 0; i < 16; i++) {
-    float a = float(i) * 2.39996323;
     float d = sqrt((float(i) + 0.5) / 16.0) * r;
-    acc += tex(clamp(su + vec2(cos(a), sin(a) * asp) * d, 0.0, 1.0));
+    acc += tex(clamp(su + vec2(dir.x, dir.y * asp) * d, 0.0, 1.0));
+    dir = vec2(dir.x * rot.x - dir.y * rot.y, dir.x * rot.y + dir.y * rot.x);
   }
   return acc / 17.0;
 }

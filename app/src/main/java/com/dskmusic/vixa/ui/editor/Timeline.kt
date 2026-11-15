@@ -382,7 +382,11 @@ fun Timeline(vm: EditorViewModel, project: Project, modifier: Modifier = Modifie
                             }
                         }
                         else if (down.position.y <= rulerH) vm.player.seekTo(tDown)
-                        else vm.select(null)
+                        else {
+                            vm.select(null)
+                            // Reproduciendo, un toque en un hueco lleva el cabezal ahí y sigue la reproducción.
+                            if (vm.player.playing.value) vm.player.seekTo(tDown)
+                        }
                     }
                 }
             },
