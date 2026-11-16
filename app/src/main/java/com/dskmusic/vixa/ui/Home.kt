@@ -160,6 +160,8 @@ fun HomeScreen(
     CollectAiMessages(container) { error = it }
     var pickOriginal by remember { mutableStateOf<String?>(null) }
     var assistant by remember { mutableStateOf(false) }
+    var assistantInitial by remember { mutableStateOf<List<String>>(emptyList()) }
+    var shared by remember { mutableStateOf<List<String>?>(null) }
     var trashed by remember { mutableStateOf<List<Pair<ProjectInfo, Int>>>(emptyList()) }
     var trashView by remember { mutableStateOf(false) }
     var purgeAsk by remember { mutableStateOf<ProjectInfo?>(null) }
@@ -216,7 +218,16 @@ fun HomeScreen(
             val p = container.projects.importVixa(android.net.Uri.fromFile(File(vixa)))
             busy = false
             if (p != null) onOpen(p.id) else error = context.getString(R.string.err_project_load)
-        } else fromMedia(list, "")
+        } else shared = list
+    }
+    shared?.let { list ->
+        AlertDialog(
+            onDismissRequest = { shared = null },
+            title = { Text(stringResource(R.string.share_ask_title)) },
+            text = { Text(stringResource(R.string.share_ask_text)) },
+            confirmButton = { TextButton({ shared = null; assistantInitial = list; assistant = true }) { Text(stringResource(R.string.share_ask_assistant)) } },
+            dismissButton = { TextButton({ shared = null; fromMedia(list, "") }) { Text(stringResource(R.string.share_ask_project)) } },
+        )
     }
 
     val tools = remember {
@@ -382,7 +393,7 @@ fun HomeScreen(
             createAndOpen(Project(id = newId(), name = name, createdAt = now, modifiedAt = now, width = w, height = h, fps = fps))
         }
     }
-    if (assistant) AssistantDialog(container, { assistant = false }) { id -> assistant = false; onOpen(id) }
+    if (assistant) AssistantDialog(container, { assistant = false; assistantInitial = emptyList() }, assistantInitial) { id -> assistant = false; onOpen(id) }
     pickOriginal?.let { name ->
         MediaPickerDialog(container, PickFilter.VISUAL, multi = true, onDismiss = { pickOriginal = null }) { paths -> pickOriginal = null; fromMedia(paths, name) }
     }

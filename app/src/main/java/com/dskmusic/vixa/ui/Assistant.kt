@@ -131,12 +131,12 @@ private class PickedMedia(val id: Int, val path: String)
  * abrirlo en el editor). Genera un proyecto normal con los cortes al ritmo de la música.
  */
 @Composable
-fun AssistantDialog(container: AppContainer, onDismiss: () -> Unit, onOpen: (String) -> Unit) {
+fun AssistantDialog(container: AppContainer, onDismiss: () -> Unit, initial: List<String> = emptyList(), onOpen: (String) -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var step by remember { mutableIntStateOf(0) }
-    var items by remember { mutableStateOf<List<PickedMedia>>(emptyList()) }
-    var nextId by remember { mutableIntStateOf(0) }
+    var items by remember { mutableStateOf(initial.mapIndexed { i, p -> PickedMedia(i, p) }) }
+    var nextId by remember { mutableIntStateOf(initial.size) }
     var title by remember { mutableStateOf("") }
     var outro by remember { mutableStateOf("") }
     var aspect by remember { mutableStateOf(0 to 0) }

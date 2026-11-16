@@ -1188,6 +1188,10 @@
     <string name="as_exit_text">Si sales ahora se perderán los cambios: los medios elegidos, los ajustes y el montaje generado. No se guardará nada.</string>
     <string name="as_exit_confirm">Salir y descartar</string>
     <string name="as_exit_stay">Seguir aquí</string>
+    <string name="share_ask_title">Archivos recibidos</string>
+    <string name="share_ask_text">¿Dónde quieres usarlos?</string>
+    <string name="share_ask_assistant">Asistente</string>
+    <string name="share_ask_project">Proyecto nuevo</string>
     <string name="anim_back_left">Rebote desde la derecha</string>
     <string name="anim_back_right">Rebote desde la izquierda</string>
     <string name="anim_back_up">Rebote desde abajo</string>

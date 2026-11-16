@@ -1189,6 +1189,10 @@
     <string name="as_exit_text">If you leave now the changes will be lost: the chosen media, the settings and the generated edit. Nothing will be saved.</string>
     <string name="as_exit_confirm">Leave and discard</string>
     <string name="as_exit_stay">Stay here</string>
+    <string name="share_ask_title">Received files</string>
+    <string name="share_ask_text">Where do you want to use them?</string>
+    <string name="share_ask_assistant">Assistant</string>
+    <string name="share_ask_project">New project</string>
     <string name="anim_back_left">Overshoot left</string>
     <string name="anim_back_right">Overshoot right</string>
     <string name="anim_back_up">Overshoot up</string>
