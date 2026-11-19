@@ -610,12 +610,39 @@ fun CanvasPanel(vm: EditorViewModel, project: Project) {
     }
 }
 
+/** Duración del fundido desde / a negro de todo el vídeo: 0,5 a 5 s (2 s por defecto). Si ya hay uno, permite quitarlo. */
+@Composable
+fun FadeDialog(vm: EditorViewModel, project: Project, fromBlack: Boolean, onDismiss: () -> Unit) {
+    val current = if (fromBlack) project.fadeInUs else project.fadeOutUs
+    var secs by remember { mutableStateOf(if (current > 0) (current / 1_000_000f).coerceIn(0.5f, 5f) else 2f) }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(if (fromBlack) R.string.fade_from_black else R.string.fade_to_black)) },
+        text = {
+            Column {
+                Text(stringResource(R.string.duration) + ": " + String.format(Locale.US, "%.1f s", secs))
+                androidx.compose.material3.Slider(secs, { secs = Math.round(it * 2f) / 2f }, valueRange = 0.5f..5f, steps = 8)
+            }
+        },
+        confirmButton = {
+            TextButton({ vm.edit(R.string.hist_fade_black) { it.fadeBlack(fromBlack, (secs * 1_000_000f).toLong()) }; onDismiss() }) { Text(stringResource(R.string.ok)) }
+        },
+        dismissButton = {
+            Row {
+                if (current > 0) TextButton({ vm.edit(R.string.hist_fade_black) { it.fadeBlack(fromBlack, 0L) }; onDismiss() }) { Text(stringResource(R.string.delete)) }
+                TextButton(onDismiss) { Text(stringResource(R.string.cancel)) }
+            }
+        },
+    )
+}
+
 @Composable
 fun ExtrasPanel(vm: EditorViewModel, project: Project, pick: (PickRequest) -> Unit) {
     val selection by vm.selection.collectAsState()
     val multi by vm.multiSelect.collectAsState()
     val black = vm.settings.colorDurationMs * 1000L
     var pasting by remember { mutableStateOf(false) }
+    var fadeAsk by remember { mutableStateOf<Boolean?>(null) }
     SectionTitle(stringResource(R.string.extras_auto))
     FlowRow(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         AssistChip({ vm.beatSync(false) }, { Text(stringResource(R.string.beat_markers)) })
@@ -660,9 +687,10 @@ fun ExtrasPanel(vm: EditorViewModel, project: Project, pick: (PickRequest) -> Un
     FlowRow(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         AssistChip({ vm.edit(R.string.hist_add_color) { it.addBlack(true, black) } }, { Text(stringResource(R.string.black_at_start)) })
         AssistChip({ vm.edit(R.string.hist_add_color) { it.addBlack(false, black) } }, { Text(stringResource(R.string.black_at_end)) })
-        AssistChip({ vm.edit(R.string.hist_fade_black) { it.fadeBlack(true, US) } }, { Text(stringResource(R.string.fade_from_black)) })
-        AssistChip({ vm.edit(R.string.hist_fade_black) { it.fadeBlack(false, US) } }, { Text(stringResource(R.string.fade_to_black)) })
+        AssistChip({ fadeAsk = true }, { Text(stringResource(R.string.fade_from_black)) })
+        AssistChip({ fadeAsk = false }, { Text(stringResource(R.string.fade_to_black)) })
     }
+    fadeAsk?.let { from -> FadeDialog(vm, project, from) { fadeAsk = null } }
     SectionTitle(stringResource(R.string.split_screen))
     Row(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         for ((id, label) in listOf("2v" to "▯▯", "2h" to "▭/▭", "3" to "▭/▯▯", "4" to "▯▯/▯▯")) {

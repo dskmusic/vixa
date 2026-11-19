@@ -640,11 +640,8 @@ fun Project.rippleGap(before: Project): Project {
     }.copy(markers = markers.map { it.copy(timeUs = (it.timeUs + d).coerceAtLeast(0L)) }).normalized()
 }
 
-fun Project.fadeBlack(atStart: Boolean, durUs: Long): Project {
-    val clips = mainTrack.clips
-    val target = (if (atStart) clips.firstOrNull() else clips.lastOrNull()) ?: return this
-    return updateClip(target.id) { if (atStart) it.copy(blackInUs = durUs) else it.copy(blackOutUs = durUs) }
-}
+/** Fundido desde / a negro de todo el proyecto (lo pinta OverlayRender encima de todo). 0 lo quita. */
+fun Project.fadeBlack(atStart: Boolean, durUs: Long): Project = if (atStart) copy(fadeInUs = durUs) else copy(fadeOutUs = durUs)
 
 /** Reencuadre rápido: cambia el lienzo; las transformaciones son relativas, así que se conserva el encuadre. */
 fun Project.reframed(w: Int, h: Int, fill: Boolean): Project = copy(width = w, height = h).mapTracks { t ->

@@ -54,7 +54,20 @@ class OverlayRender {
         val wm = p.watermark
         if (wm.enabled) h = h * 31 + wm.hashCode()
         h = h * 31 + System.identityHashCode(p.subtitleStyle)
+        h = h * 31 + (fadeAlpha(p, tUs) * 255).toInt()
         return h
+    }
+
+    private val fadePaint = Paint().apply { color = android.graphics.Color.BLACK }
+
+    /** Opacidad del fundido desde / a negro de todo el vídeo en [tUs] (0..1). */
+    fun fadeAlpha(p: Project, tUs: Long): Float {
+        if (p.fadeInUs <= 0 && p.fadeOutUs <= 0) return 0f
+        val total = p.durationUs
+        var a = 0f
+        if (p.fadeInUs > 0 && tUs < p.fadeInUs) a = 1f - tUs.toFloat() / p.fadeInUs
+        if (p.fadeOutUs > 0 && tUs > total - p.fadeOutUs) a = max(a, 1f - (total - tUs).toFloat() / p.fadeOutUs)
+        return a.coerceIn(0f, 1f)
     }
 
     /** Índice de la palabra que se está diciendo en [localUs] (-1 antes de la primera). */
@@ -92,6 +105,9 @@ class OverlayRender {
             }
         }
         drawWatermark(canvas, p, w, h)
+        // El fundido a negro va en esta capa (la última de todas) para cubrir vídeo, capas, textos y stickers.
+        val a = fadeAlpha(p, tUs)
+        if (a > 0f) { fadePaint.alpha = (a * 255).toInt(); canvas.drawRect(0f, 0f, w.toFloat(), h.toFloat(), fadePaint) }
     }
 
     fun drawClip(canvas: Canvas, p: Project, c: Clip, localUs: Long, w: Int, h: Int) {

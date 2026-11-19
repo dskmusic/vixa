@@ -149,6 +149,7 @@ fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit,
     // Se lee para recomponer la barra superior (deshacer/rehacer) tras cada cambio del historial.
     @Suppress("UNUSED_VARIABLE") val historyTick = vm.historyTick.collectAsState().value
     var pick by remember { mutableStateOf<PickRequest?>(null) }
+    var fadeAsk by remember { mutableStateOf<Boolean?>(null) }
     var exporting by remember { mutableStateOf(false) }
     var splitAsk by remember { mutableStateOf(false) }
     var trackAsk by remember { mutableStateOf(false) }
@@ -409,7 +410,7 @@ fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit,
                 filter = when (r.target) { AddTarget.AUDIO -> PickFilter.AUDIO; AddTarget.STICKER -> PickFilter.IMAGES; AddTarget.MAIN -> PickFilter.ANY; else -> PickFilter.VISUAL },
                 multi = r.multi,
                 stickers = r.target == AddTarget.STICKER,
-                colorActions = if (r.target == AddTarget.MAIN) ColorActions(vm.settings.colorDurationMs, { fill, d, atStart -> vm.addColor(fill, d, atStart) }, { from -> vm.edit(R.string.hist_fade_black) { it.fadeBlack(from, 1_000_000L) } }) else null,
+                colorActions = if (r.target == AddTarget.MAIN) ColorActions(vm.settings.colorDurationMs, { fill, d, atStart -> vm.addColor(fill, d, atStart) }, { from -> fadeAsk = from }) else null,
                 onDismiss = { pick = null },
                 onPicked = { paths -> pick = null; r.onPicked(paths) },
             )
@@ -417,6 +418,7 @@ fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit,
             PickKind.FOLDER -> FileBrowserDialog(stringResource(R.string.choose_folder), folderMode = true, onDismiss = { pick = null }) { paths -> pick = null; r.onPicked(paths) }
         }
     }
+    fadeAsk?.let { from -> project?.let { p -> FadeDialog(vm, p, from) { fadeAsk = null } } }
     vm.stickerAsk.collectAsState().value?.let { paths ->
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { vm.stickerAsk.value = null },

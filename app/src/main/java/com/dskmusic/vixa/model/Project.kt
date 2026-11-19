@@ -527,6 +527,9 @@ data class Project(
     val karaokeColor: Int = 0,
     /** Proyecto de demostración: al abrirlo el editor avisa de que puede haber cortes en la reproducción y aconseja exportarlo. */
     val demo: Boolean = false,
+    /** Fundido desde / a negro de todo el vídeo, por encima de todas las capas (0 = sin fundido). */
+    val fadeInUs: Long = 0,
+    val fadeOutUs: Long = 0,
 ) {
     val durationUs: Long get() = tracks.maxOfOrNull { it.endUs } ?: 0L
     val mainTrack: Track get() = tracks.firstOrNull { it.type == TrackType.MAIN } ?: Track(type = TrackType.MAIN)
