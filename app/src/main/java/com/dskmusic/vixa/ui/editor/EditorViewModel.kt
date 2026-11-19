@@ -38,6 +38,7 @@ import com.dskmusic.vixa.model.newId
 import com.dskmusic.vixa.model.normalized
 import com.dskmusic.vixa.model.pasteAttributes
 import com.dskmusic.vixa.model.removeClips
+import com.dskmusic.vixa.model.rippleGap
 import com.dskmusic.vixa.model.replaceMedia
 import com.dskmusic.vixa.model.sourceOffsetAt
 import com.dskmusic.vixa.model.splitClip
@@ -79,6 +80,24 @@ class EditorViewModel(private val context: Context, val container: AppContainer,
     val tool = MutableStateFlow("")
     /** Zoom de la línea de tiempo en dp por segundo. */
     val zoom = MutableStateFlow(60f)
+    /** Ancho del lienzo de la línea de tiempo (dp), para encajar el proyecto entero. */
+    var timelineWidthDp = 0f
+    /** "Ver todo": zoom y posición previos + zoom de encaje. null = no activo. */
+    val fitSaved = MutableStateFlow<Triple<Float, Long, Float>?>(null)
+
+    /** Encaja el proyecto entero en la línea de tiempo; si ya está encajado, vuelve al zoom y posición de antes. */
+    fun toggleFitTimeline() {
+        val p = _project.value ?: return
+        val s = fitSaved.value
+        if (s != null && kotlin.math.abs(zoom.value - s.third) < 0.01f) {
+            zoom.value = s.first; player.seekTo(s.second); fitSaved.value = null; return
+        }
+        if (p.durationUs <= 0 || timelineWidthDp <= 0f) return
+        val fit = (timelineWidthDp * 0.9f / (p.durationUs / 1_000_000f)).coerceIn(0.01f, 600f)
+        fitSaved.value = Triple(zoom.value, player.positionUs.value, fit)
+        zoom.value = fit
+        player.seekTo(p.durationUs / 2)
+    }
     private val _busy = MutableStateFlow<Busy?>(null)
     val busy: StateFlow<Busy?> = _busy
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 8)
@@ -241,7 +260,7 @@ class EditorViewModel(private val context: Context, val container: AppContainer,
     fun edit(label: String, live: Boolean = false, f: (Project) -> Project) {
         val h = history ?: return
         val cur = _project.value ?: return
-        val next = try { f(cur) } catch (e: Throwable) { ErrorLog.log("Edit/$label", e); toast(str(R.string.err_generic)); return }
+        val next = try { f(cur).rippleGap(cur) } catch (e: Throwable) { ErrorLog.log("Edit/$label", e); toast(str(R.string.err_generic)); return }
         if (next === cur || next == cur) return
         if (live && gestureLabel == label) h.replaceCurrent(next) else h.push(label, next)
         gestureLabel = if (live) label else null
@@ -480,9 +499,14 @@ class EditorViewModel(private val context: Context, val container: AppContainer,
         edit(R.string.hist_split) { var r = it; for (id in ids) r = r.splitClip(id, t, keep); r }
     }
 
-    fun deleteSelected() {
+    /** Pendiente de confirmar el borrado del hueco inicial. */
+    val confirmGapDelete = MutableStateFlow(false)
+
+    fun deleteSelected(confirmed: Boolean = false) {
         val ids = _selection.value
         if (ids.isEmpty()) return
+        if (!confirmed && ids.any { _project.value?.clip(it)?.gap == true }) { confirmGapDelete.value = true; return }
+        confirmGapDelete.value = false
         edit(R.string.hist_delete) { it.removeClips(ids) }
         _selection.value = emptySet()
     }

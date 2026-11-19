@@ -458,6 +458,10 @@ data class Clip(
     /** Estabilización básica activada (usa el análisis en caché). */
     val stabilize: Boolean = false,
     val label: String = "",
+    /** Clip negro de "hueco al inicio": al cambiar su duración o borrarlo se mueve todo lo demás (ver rippleGap). */
+    val gap: Boolean = false,
+    /** El hueco mueve también las pistas de audio. */
+    val gapAudio: Boolean = true,
     /** Audio procesado con IA (reducción de ruido, separación, texto a voz). */
     val aiAudio: AiAudioRef? = null,
     /** Tramos con voz detectados por IA (pares inicio, fin relativos al clip): la música solo baja durante ellos. */

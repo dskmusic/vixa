@@ -94,6 +94,7 @@ import com.dskmusic.vixa.model.StickerType
 import com.dskmusic.vixa.model.TrackType
 import com.dskmusic.vixa.model.US
 import com.dskmusic.vixa.model.addBlack
+import com.dskmusic.vixa.model.insertGapAtStart
 import com.dskmusic.vixa.model.addMarker
 import com.dskmusic.vixa.model.addTrack
 import com.dskmusic.vixa.model.addToTrack
@@ -626,6 +627,34 @@ fun ExtrasPanel(vm: EditorViewModel, project: Project, pick: (PickRequest) -> Un
                 pick(PickRequest(PickKind.MEDIA, AddTarget.AUDIO) { song -> song.firstOrNull()?.let { vm.autoMontage(media, it) } })
             })
         }, { Text(stringResource(R.string.auto_montage)) })
+    }
+    SectionTitle(stringResource(R.string.move_all))
+    var gapDialog by remember { mutableStateOf(false) }
+    FlowRow(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        AssistChip({ gapDialog = true }, { Text(stringResource(R.string.gap_at_start)) })
+    }
+    if (gapDialog) {
+        var secs by remember { mutableStateOf("1") }
+        var withAudio by remember { mutableStateOf(true) }
+        val us = secs.replace(',', '.').toFloatOrNull()?.takeIf { it > 0f }?.let { (it * 1_000_000f).toLong() }
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { gapDialog = false },
+            title = { Text(stringResource(R.string.gap_at_start)) },
+            text = {
+                Column {
+                    OutlinedTextField(secs, { secs = it }, singleLine = true, label = { Text(stringResource(R.string.gap_seconds)) },
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal))
+                    Row(Modifier.fillMaxWidth().clickable { withAudio = !withAudio }.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        androidx.compose.material3.Checkbox(withAudio, { withAudio = it })
+                        Text(stringResource(R.string.gap_move_audio))
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton({ us?.let { d -> vm.edit(R.string.gap_at_start) { it.insertGapAtStart(d, withAudio) } }; gapDialog = false }, enabled = us != null) { Text(stringResource(R.string.ok)) }
+            },
+            dismissButton = { TextButton({ gapDialog = false }) { Text(stringResource(R.string.cancel)) } },
+        )
     }
     SectionTitle(stringResource(R.string.black_and_fades))
     FlowRow(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {

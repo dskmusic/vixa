@@ -28,7 +28,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -104,6 +106,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.Lifecycle
@@ -313,9 +316,12 @@ fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit,
     // --- Diseños ----------------------------------------------------------------------------
     val sizeClass = currentWindowAdaptiveInfo().windowSizeClass
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
+        // La orientación se mide SIN el teclado: si no, al abrir el panel de emojis (más alto) el diseño
+        // saltaba a horizontal, se recreaba el campo de texto y se cerraba el teclado.
+        BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout))) {
+        val landscape = maxWidth > maxHeight
+        BoxWithConstraints(Modifier.fillMaxSize().imePadding()) {
             val maxH = maxHeight
-            val landscape = maxWidth > maxH
             val expanded = sizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)
             val medium = sizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
             if (fullscreen) {
@@ -359,9 +365,18 @@ fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit,
                 // Vertical: vista previa arriba, línea de tiempo en el centro y herramientas abajo.
                 Column(Modifier.fillMaxSize()) {
                     topBar(Modifier.fillMaxWidth())
-                    Preview(vm, p, Modifier.fillMaxWidth().weight(1f))
-                    Transport(vm, p)
-                    Timeline(vm, p, Modifier.fillMaxWidth().height(if (tool.isEmpty()) minOf(maxH * 0.32f, 280.dp) else 112.dp), addKind)
+                    // La vista previa mide lo justo para el formato del vídeo (sin franjas) y lo que sobra va a la línea
+                    // de tiempo. El tope es el alto que tenía antes, así que un vídeo vertical se ve igual que siempre.
+                    BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
+                        val tlMin = if (tool.isEmpty()) minOf(maxH * 0.32f, 280.dp) else 112.dp
+                        val fitH = if (p.width > 0) maxWidth * (p.height.toFloat() / p.width) else maxHeight
+                        val previewH = minOf(fitH, maxHeight - 44.dp - tlMin).coerceAtLeast(0.dp)
+                        Column(Modifier.fillMaxSize()) {
+                            Preview(vm, p, Modifier.fillMaxWidth().height(previewH))
+                            Transport(vm, p)
+                            Timeline(vm, p, Modifier.fillMaxWidth().weight(1f), addKind)
+                        }
+                    }
                     Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
                         if (tool.isEmpty()) toolbarRow() else panel(Modifier.fillMaxWidth().heightIn(max = minOf(maxH * 0.4f, 340.dp)))
                     }
@@ -369,8 +384,13 @@ fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit,
             }
             message?.let { Snackbar(Modifier.align(Alignment.BottomCenter).padding(12.dp)) { Text(it) } }
         }
+        }
     }
 
+    if (vm.confirmGapDelete.collectAsState().value) {
+        com.dskmusic.vixa.ui.ConfirmDialog(stringResource(R.string.gap_at_start), stringResource(R.string.gap_delete_warn),
+            onDismiss = { vm.confirmGapDelete.value = false }, onConfirm = { vm.deleteSelected(confirmed = true) })
+    }
     busy?.let { b ->
         Dialog(onDismissRequest = {}) {
             Surface(shape = MaterialTheme.shapes.large) {

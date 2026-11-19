@@ -97,6 +97,11 @@
     <string name="bg_blur">Blurred video</string>
     <string name="bitrate">Bitrate</string>
     <string name="black">Black</string>
+    <string name="move_all">Move everything</string>
+    <string name="gap_at_start">Gap at start</string>
+    <string name="gap_seconds">Seconds</string>
+    <string name="gap_move_audio">Also move audio tracks</string>
+    <string name="gap_delete_warn">This is the gap at the start. Deleting it moves the rest of the project back by its length. Check that nothing gets out of sync (for example, audio tracks if you did not include them).</string>
     <string name="black_and_fades">Black and fades</string>
     <string name="black_at_end">Black at end</string>
     <string name="black_at_start">Black at start</string>
@@ -421,6 +426,7 @@
     <string name="key_failed">The key failed</string>
     <string name="key_ok">The key works</string>
     <string name="keyframe">Keyframe</string>
+    <string name="fit_project">Show whole project</string>
     <string name="keyframes">Keyframes</string>
     <string name="keyframes_hint">Move the playhead and tap the diamond to add or remove a keyframe. Sliders with a diamond can also be animated.</string>
     <string name="kind_audio">Audio (M4A)</string>

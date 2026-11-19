@@ -61,6 +61,21 @@ import java.util.Locale
 
 val LocalSettings = compositionLocalOf { AppSettings() }
 
+/**
+ * Vibración breve que no pasa por la respuesta táctil del sistema: se nota también en silencio, con la vibración
+ * al tocar desactivada y con ahorro de batería. Solo para momentos clave (coger un clip), no para ticks repetidos.
+ */
+fun android.content.Context.vibrateClick() {
+    val v = if (android.os.Build.VERSION.SDK_INT >= 31) getSystemService(android.os.VibratorManager::class.java)?.defaultVibrator
+        else @Suppress("DEPRECATION") getSystemService(android.os.Vibrator::class.java)
+    if (v == null || !v.hasVibrator()) return
+    val effect = if (android.os.Build.VERSION.SDK_INT >= 29) android.os.VibrationEffect.createPredefined(android.os.VibrationEffect.EFFECT_CLICK)
+        else android.os.VibrationEffect.createOneShot(20, 80)
+    // ponytail: uso "alarma" para saltarse silencio/ahorro; si Android lo restringe, probar USAGE_ACCESSIBILITY.
+    if (android.os.Build.VERSION.SDK_INT >= 33) v.vibrate(effect, android.os.VibrationAttributes.createForUsage(android.os.VibrationAttributes.USAGE_ALARM))
+    else @Suppress("DEPRECATION") v.vibrate(effect, android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_ALARM).build())
+}
+
 fun HapticFeedback.tick(enabled: Boolean) {
     if (enabled) performHapticFeedback(HapticFeedbackType.TextHandleMove)
 }

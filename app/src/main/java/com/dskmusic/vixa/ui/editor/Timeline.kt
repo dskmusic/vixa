@@ -51,6 +51,8 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
+import androidx.compose.ui.layout.onSizeChanged
+import com.dskmusic.vixa.ui.vibrateClick
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalViewConfiguration
@@ -109,6 +111,7 @@ fun Timeline(vm: EditorViewModel, project: Project, modifier: Modifier = Modifie
     val density = LocalDensity.current
     val appRes = androidx.compose.ui.platform.LocalContext.current.resources
     val haptics = LocalHapticFeedback.current
+    val ctx = androidx.compose.ui.platform.LocalContext.current
     val touchSlop = LocalViewConfiguration.current.touchSlop
     val longPressMs = LocalViewConfiguration.current.longPressTimeoutMillis
     val positionUs by vm.player.positionUs.collectAsState()
@@ -194,7 +197,7 @@ fun Timeline(vm: EditorViewModel, project: Project, modifier: Modifier = Modifie
         }
 
         Canvas(
-            Modifier.fillMaxSize().pointerInput(Unit) {
+            Modifier.fillMaxSize().onSizeChanged { vm.timelineWidthDp = it.width / density.density }.pointerInput(Unit) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     val p0 = projectState.value
@@ -244,7 +247,7 @@ fun Timeline(vm: EditorViewModel, project: Project, modifier: Modifier = Modifie
                     val emptyPress = hit == null && track != null && track.type != TrackType.MAIN && !track.locked && down.position.y > rulerH && mode == DragMode.NONE
                     var lastUptime = downTime
                     val scrubScale = pps
-                    if (mode != DragMode.NONE) { vm.player.setScrubbing(true); if (vm.settings.haptics) haptics.performHapticFeedback(HapticFeedbackType.LongPress) }
+                    if (mode != DragMode.NONE) { vm.player.setScrubbing(true); if (vm.settings.haptics) ctx.vibrateClick() }
 
                     while (true) {
                         // Pulsación larga sobre un clip: se detecta por tiempo mientras no haya movimiento.
@@ -263,7 +266,7 @@ fun Timeline(vm: EditorViewModel, project: Project, modifier: Modifier = Modifie
                             target = hit
                             movingId = hit?.id
                             if (hit != null && hit.id !in selectionState.value) vm.select(hit.id)
-                            if (vm.settings.haptics) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            if (vm.settings.haptics) ctx.vibrateClick()
                             continue
                         }
                         val pressed = event.changes.filter { it.pressed }
@@ -271,7 +274,8 @@ fun Timeline(vm: EditorViewModel, project: Project, modifier: Modifier = Modifie
                         if (pressed.size >= 2) {
                             if (mode != DragMode.PINCH) { mode = DragMode.PINCH; vm.commit() }
                             val z = event.calculateZoom()
-                            if (z != 1f) vm.zoom.value = (vm.zoom.value * z).coerceIn(4f, 600f)
+                            // Tras "ver todo" el zoom puede quedar por debajo de 4: no se fuerza a saltar.
+                            if (z != 1f) vm.zoom.value = (vm.zoom.value * z).coerceIn(minOf(4f, vm.zoom.value), 600f)
                             event.changes.forEach { it.consume() }
                             moved = true
                             continue
@@ -499,7 +503,7 @@ fun Timeline(vm: EditorViewModel, project: Project, modifier: Modifier = Modifie
                             }
                         }
                         ClipKind.AUDIO -> c.label
-                        else -> if (c.speed != 1f || c.speedCurve.isNotEmpty()) (if (c.speedCurve.isNotEmpty()) "~" else String.format(java.util.Locale.US, "%.1fx", c.speed)) else ""
+                        else -> if (c.gap) appRes.getString(R.string.gap_at_start) else if (c.speed != 1f || c.speedCurve.isNotEmpty()) (if (c.speedCurve.isNotEmpty()) "~" else String.format(java.util.Locale.US, "%.1fx", c.speed)) else ""
                     }
                     if (label.isNotEmpty() && rect.width() > 24 * dp) {
                         textPaint.textSize = 10 * dp

@@ -488,8 +488,15 @@ fun Transport(vm: EditorViewModel, project: Project, modifier: Modifier = Modifi
     Row(modifier.fillMaxWidth().height(44.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
         Text(formatTime(positionUs) + " / " + formatTime(project.durationUs), style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(start = 8.dp))
         val selClip = vm.selection.collectAsState().value.singleOrNull()?.let { project.clip(it) }
-        // Play, hueco con el keyframe centrado y, a la derecha, bucle/guías/pantalla completa.
-        Spacer(Modifier.weight(1f))
+        // Hueco con "ver todo" centrado, play, hueco con el keyframe centrado y, a la derecha, bucle/guías/pantalla completa.
+        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+            val fit by vm.fitSaved.collectAsState()
+            val zoomNow by vm.zoom.collectAsState()
+            val fitted = fit?.let { abs(zoomNow - it.third) < 0.01f } == true
+            if (!full) IconButton({ vm.toggleFitTimeline() }, Modifier.size(36.dp), enabled = project.durationUs > 0) {
+                Icon(Icons.Default.FitScreen, stringResource(R.string.fit_project), tint = if (fitted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
         FilledIconButton({ vm.player.toggle() }, Modifier.size(38.dp)) {
             Icon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow, stringResource(R.string.play_pause))
         }

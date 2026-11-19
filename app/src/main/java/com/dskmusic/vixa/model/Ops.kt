@@ -613,6 +613,33 @@ fun Project.addBlack(atStart: Boolean, durUs: Long): Project {
     return insertMain(listOf(black), if (atStart) 0 else -1)
 }
 
+/**
+ * Hueco al inicio: un clip negro marcado como [Clip.gap] en la pista principal (que va siempre pegada). Si ya existe,
+ * se alarga. El desplazamiento del resto de pistas lo hace [rippleGap] (al crearlo, estirarlo, recortarlo o borrarlo).
+ */
+fun Project.insertGapAtStart(durUs: Long, audio: Boolean): Project {
+    if (durUs <= 0) return this
+    val first = mainTrack.clips.firstOrNull()
+    if (first?.gap == true) return updateClip(first.id) { it.copy(durationUs = it.durationUs + durUs) }
+    val gap = Clip(kind = ClipKind.COLOR, durationUs = durUs, fill = ColorFill(), gap = true, gapAudio = audio)
+    return insertMain(listOf(gap), 0)
+}
+
+/**
+ * Mantiene cuadrado el hueco inicial: si la duración total de los clips-hueco cambia respecto a [before] (crear,
+ * estirar, recortar, borrar), el resto de pistas y los marcadores se mueven lo mismo. Audio solo si el hueco lo indica.
+ */
+fun Project.rippleGap(before: Project): Project {
+    fun gapUs(p: Project) = p.mainTrack.clips.filter { it.gap }.sumOf { it.durationUs }
+    val d = gapUs(this) - gapUs(before)
+    if (d == 0L) return this
+    val ref = mainTrack.clips.firstOrNull { it.gap } ?: before.mainTrack.clips.first { it.gap }
+    return mapTracks { t ->
+        if (t.type == TrackType.MAIN || (!ref.gapAudio && t.type == TrackType.AUDIO)) t
+        else t.copy(clips = t.clips.map { it.copy(startUs = (it.startUs + d).coerceAtLeast(0L)) })
+    }.copy(markers = markers.map { it.copy(timeUs = (it.timeUs + d).coerceAtLeast(0L)) }).normalized()
+}
+
 fun Project.fadeBlack(atStart: Boolean, durUs: Long): Project {
     val clips = mainTrack.clips
     val target = (if (atStart) clips.firstOrNull() else clips.lastOrNull()) ?: return this

@@ -96,6 +96,11 @@
     <string name="bg_blur">Vídeo desenfocado</string>
     <string name="bitrate">Bitrate</string>
     <string name="black">Negro</string>
+    <string name="move_all">Mover todo</string>
+    <string name="gap_at_start">Hueco al inicio</string>
+    <string name="gap_seconds">Segundos</string>
+    <string name="gap_move_audio">Mover también las pistas de audio</string>
+    <string name="gap_delete_warn">Es el hueco del inicio. Al borrarlo, el resto del proyecto retrocede lo que dure. Revisa que nada quede descuadrado (por ejemplo, el audio si no lo incluiste).</string>
     <string name="black_and_fades">Negro y fundidos</string>
     <string name="black_at_end">Añadir negro al final</string>
     <string name="black_at_start">Añadir negro al inicio</string>
@@ -420,6 +425,7 @@
     <string name="key_failed">La clave ha fallado</string>
     <string name="key_ok">La clave funciona</string>
     <string name="keyframe">Fotograma clave</string>
+    <string name="fit_project">Ver todo el proyecto</string>
     <string name="keyframes">Keyframes</string>
     <string name="keyframes_hint">Mueve el cabezal y toca el rombo para añadir o quitar un fotograma clave. Los sliders con rombo también se pueden animar.</string>
     <string name="kind_audio">Audio (M4A)</string>
