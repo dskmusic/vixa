@@ -746,6 +746,7 @@
     <string name="width">Ancho</string>
     <string name="with_media">Con medios</string>
     <string name="zone">Zona borrosa</string>
+    <string name="zone_n">Zona %1$d</string>
     <string name="zone_blur">Desenfoque</string>
     <string name="zone_ellipse">Elíptica</string>
     <string name="zone_hint">Arrastra sobre la vista previa para mover la zona; pellizca para cambiar su tamaño. Usa los rombos para seguir un objeto con keyframes.</string>

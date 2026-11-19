@@ -64,6 +64,12 @@ uniform vec4 uMask;
 uniform vec4 uMaskP;
 uniform vec4 uZone;
 uniform vec4 uZoneP;
+uniform vec4 uZone1;
+uniform vec4 uZone1P;
+uniform vec4 uZone2;
+uniform vec4 uZone2P;
+uniform vec4 uZone3;
+uniform vec4 uZone3P;
 uniform vec4 uReveal;
 uniform vec4 uGen0;
 uniform vec4 uGen1;
@@ -105,6 +111,15 @@ vec2 applyLayer(vec2 q) {
   c.x /= asp;
   c /= max(tZoom, 0.001);
   return c + 0.5 - tOfs;
+}
+// Zona desenfocada / mosaico: z = centro y tamaño; p = (tipo 0/1/2, elipse, intensidad, -).
+void zoneHit(vec2 su, vec4 z, vec4 p, inout float pix, inout float zb) {
+  if (p.x < 0.5) return;
+  vec2 zd = (su - z.xy) / max(z.zw * 0.5, vec2(0.0001));
+  float inZone = p.y > 0.5 ? step(length(zd), 1.0) : step(max(abs(zd.x), abs(zd.y)), 1.0);
+  if (inZone < 0.5) return;
+  if (p.x > 1.5) pix = max(pix, 0.15 + p.z * 0.85);
+  else zb = max(zb, 0.01 + p.z * 0.06);
 }
 vec4 tex(vec2 su) { return texture2D(uTex, vec2(su.x, 1.0 - su.y)); }
 vec4 blurTex(vec2 su, float r) {
@@ -264,16 +279,11 @@ void main() {
     if (uSrc.w > 0.5) lf.y = 1.0 - lf.y;
     vec2 su = vec2(uCrop.x + lf.x * (1.0 - uCrop.x - uCrop.z), uCrop.y + lf.y * (1.0 - uCrop.y - uCrop.w));
     su = clamp(su, 0.0, 1.0);
-    float zt = uZoneP.x;
     float zoneBlur = 0.0;
-    if (zt > 0.5) {
-      vec2 zd = (su - uZone.xy) / max(uZone.zw * 0.5, vec2(0.0001));
-      float inZone = uZoneP.y > 0.5 ? step(length(zd), 1.0) : step(max(abs(zd.x), abs(zd.y)), 1.0);
-      if (inZone > 0.5) {
-        if (zt > 1.5) pix = max(pix, 0.15 + uZoneP.z * 0.85);
-        else zoneBlur = 0.01 + uZoneP.z * 0.06;
-      }
-    }
+    zoneHit(su, uZone, uZoneP, pix, zoneBlur);
+    zoneHit(su, uZone1, uZone1P, pix, zoneBlur);
+    zoneHit(su, uZone2, uZone2P, pix, zoneBlur);
+    zoneHit(su, uZone3, uZone3P, pix, zoneBlur);
     if (pix > 0.001) {
       float n = mix(160.0, 10.0, clamp(pix, 0.0, 1.0));
       vec2 grid = vec2(n, n * uSrc.x / max(uSrc.y, 0.000001));
@@ -375,7 +385,11 @@ void main() {
       a *= 1.0 - y2;
     }
   }
-  gl_FragColor = vec4(clamp(c.rgb, 0.0, 1.0), clamp(a * uMode.y * trAlpha * inCanvas, 0.0, 1.0));
+  float outA = clamp(a * uMode.y * trAlpha * inCanvas, 0.0, 1.0);
+  vec3 outC = clamp(c.rgb, 0.0, 1.0);
+  // uGenQ.z: sin compositor (vista previa de una entrada) la pasada final espera color premultiplicado.
+  if (uGenQ.z > 0.5) outC *= outA;
+  gl_FragColor = vec4(outC, outA);
 }
 """
 

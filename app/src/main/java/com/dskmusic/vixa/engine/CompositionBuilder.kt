@@ -283,6 +283,7 @@ object CompositionBuilder {
         // SingleInputVideoGraph no usa compositor y lanza IllegalArgumentException si se le dan VideoCompositorSettings.
         // Con una sola entrada no hace falta: ClipEffect ya devuelve fotogramas del tamaño del lienzo.
         if (!singleInput) builder.setVideoCompositorSettings(settings)
+        ctx.premultiply = singleInput
         val composition = builder.build()
         return Built(composition, totalUs, ctx, singleInput)
     }

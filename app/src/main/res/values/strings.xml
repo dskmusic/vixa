@@ -747,6 +747,7 @@
     <string name="width">Width</string>
     <string name="with_media">With media</string>
     <string name="zone">Blur zone</string>
+    <string name="zone_n">Zone %1$d</string>
     <string name="zone_blur">Blur</string>
     <string name="zone_ellipse">Elliptical</string>
     <string name="zone_hint">Drag on the preview to move the zone; pinch to resize. Use the diamonds to follow a moving object with keyframes.</string>

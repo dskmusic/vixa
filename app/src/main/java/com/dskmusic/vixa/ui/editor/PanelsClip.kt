@@ -69,6 +69,13 @@ import com.dskmusic.vixa.model.speedAt
 import com.dskmusic.vixa.model.Transform
 import com.dskmusic.vixa.model.Transition
 import com.dskmusic.vixa.model.ZoneType
+import com.dskmusic.vixa.model.Zone
+import com.dskmusic.vixa.model.MAX_ZONES
+import com.dskmusic.vixa.model.allZones
+import com.dskmusic.vixa.model.removeZone
+import com.dskmusic.vixa.model.withZone
+import com.dskmusic.vixa.model.zoneKey
+import com.dskmusic.vixa.model.zoneKeyIndex
 import com.dskmusic.vixa.model.applyTransitionToAll
 import com.dskmusic.vixa.model.detachAudio
 import com.dskmusic.vixa.model.keyframeNear
@@ -365,7 +372,7 @@ fun AdjustPanel(vm: EditorViewModel, c: Clip) {
             }
         }, range = 0f..1f, default = identity[i], onFinished = { vm.commit() })
     }
-    TextButton({ vm.updateClip(h, c.id) { it.copy(color = ColorAdjust(), keyframes = it.keyframes.filterKeys { k -> k.startsWith("fx:") || k in setOf("x", "y", "scale", "rotation", "opacity", "volume") || k.startsWith("mask.") || k.startsWith("zone.") }) } },
+    TextButton({ vm.updateClip(h, c.id) { it.copy(color = ColorAdjust(), keyframes = it.keyframes.filterKeys { k -> k.startsWith("fx:") || k in setOf("x", "y", "scale", "rotation", "opacity", "volume") || k.startsWith("mask.") || zoneKeyIndex(k) >= 0 }) } },
         Modifier.padding(horizontal = 8.dp)) { Text(stringResource(R.string.reset_all)) }
 }
 
@@ -473,17 +480,33 @@ fun MaskPanel(vm: EditorViewModel, c: Clip) {
 @Composable
 fun ZonePanel(vm: EditorViewModel, c: Clip) {
     val h = R.string.hist_zone
-    ChipRow(ZoneType.entries, c.zone.type, { stringResource(when (it) { ZoneType.NONE -> R.string.none; ZoneType.BLUR -> R.string.zone_blur; ZoneType.MOSAIC -> R.string.zone_mosaic }) }) { t ->
-        vm.updateClip(h, c.id) { it.copy(zone = it.zone.copy(type = t)) }
+    val all = c.allZones
+    val selRaw by vm.zoneSel.collectAsState()
+    val i = selRaw.coerceIn(0, all.lastIndex)
+    val z = all[i]
+    val pre = zoneKey(i)
+    fun upd(live: Boolean = false, f: (Zone) -> Zone) = vm.updateClip(h, c.id, live) { cl -> cl.allZones.getOrNull(i)?.let { cl.withZone(i, f(it)) } ?: cl }
+    // Una ficha por zona; "+" añade otra y la papelera quita la seleccionada (con sus keyframes).
+    FlowRow(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (all.size > 1) for (k in all.indices) FilterChip(k == i, { vm.zoneSel.value = k }, { Text(stringResource(R.string.zone_n, k + 1)) })
+        if (all.size < MAX_ZONES && all.last().type != ZoneType.NONE) {
+            FilterChip(false, { vm.updateClip(h, c.id) { it.copy(zones = it.zones + Zone(type = ZoneType.BLUR)) }; vm.zoneSel.value = all.size }, { Text("+ " + stringResource(R.string.add)) })
+        }
+        if (all.size > 1 || z.type != ZoneType.NONE) {
+            IconButton({ vm.updateClip(h, c.id) { it.removeZone(i) }; vm.zoneSel.value = (i - 1).coerceAtLeast(0) }) { Icon(Icons.Default.Delete, stringResource(R.string.delete)) }
+        }
     }
-    if (c.zone.type != ZoneType.NONE) {
+    ChipRow(ZoneType.entries, z.type, { stringResource(when (it) { ZoneType.NONE -> R.string.none; ZoneType.BLUR -> R.string.zone_blur; ZoneType.MOSAIC -> R.string.zone_mosaic }) }) { t ->
+        upd { it.copy(type = t) }
+    }
+    if (z.type != ZoneType.NONE) {
         Text(stringResource(R.string.zone_hint), Modifier.padding(horizontal = 16.dp, vertical = 4.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        SwitchRow(stringResource(R.string.zone_ellipse), c.zone.ellipse) { on -> vm.updateClip(h, c.id) { it.copy(zone = it.zone.copy(ellipse = on)) } }
-        PreciseSlider(stringResource(R.string.intensity), c.zone.strength, { v -> vm.updateClip(h, c.id, live = true) { it.copy(zone = it.zone.copy(strength = v)) } }, range = 0f..1f, default = 0.5f, onFinished = { vm.commit() })
-        PropSlider(vm, c, "zone.cx", stringResource(R.string.position_x), h, 0f..1f, 0.5f)
-        PropSlider(vm, c, "zone.cy", stringResource(R.string.position_y), h, 0f..1f, 0.5f)
-        PropSlider(vm, c, "zone.w", stringResource(R.string.width), h, 0.02f..1f, 0.3f)
-        PropSlider(vm, c, "zone.h", stringResource(R.string.height), h, 0.02f..1f, 0.3f)
+        SwitchRow(stringResource(R.string.zone_ellipse), z.ellipse) { on -> upd { it.copy(ellipse = on) } }
+        PreciseSlider(stringResource(R.string.intensity), z.strength, { v -> upd(true) { it.copy(strength = v) } }, range = 0f..1f, default = 0.5f, onFinished = { vm.commit() })
+        PropSlider(vm, c, "$pre.cx", stringResource(R.string.position_x), h, 0f..1f, 0.5f)
+        PropSlider(vm, c, "$pre.cy", stringResource(R.string.position_y), h, 0f..1f, 0.5f)
+        PropSlider(vm, c, "$pre.w", stringResource(R.string.width), h, 0.02f..1f, 0.3f)
+        PropSlider(vm, c, "$pre.h", stringResource(R.string.height), h, 0.02f..1f, 0.3f)
     }
 }
 

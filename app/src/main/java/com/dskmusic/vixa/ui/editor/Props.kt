@@ -2,6 +2,9 @@ package com.dskmusic.vixa.ui.editor
 
 import com.dskmusic.vixa.engine.Registry
 import com.dskmusic.vixa.model.Clip
+import com.dskmusic.vixa.model.allZones
+import com.dskmusic.vixa.model.withZone
+import com.dskmusic.vixa.model.zoneKeyIndex
 import com.dskmusic.vixa.model.hasKeyframes
 import com.dskmusic.vixa.model.kf
 import com.dskmusic.vixa.model.withKeyframe
@@ -38,16 +41,15 @@ fun Clip.baseProp(name: String): Float = when (name) {
     "mask.cy" -> mask.cy
     "mask.w" -> mask.w
     "mask.h" -> mask.h
-    "zone.cx" -> zone.cx
-    "zone.cy" -> zone.cy
-    "zone.w" -> zone.w
-    "zone.h" -> zone.h
     else -> if (name.startsWith("fx:")) {
         val parts = name.split(':')
         val inst = effects.firstOrNull { it.id == parts.getOrNull(1) }
         val key = parts.getOrNull(2) ?: ""
         inst?.params?.get(key) ?: Registry.effect(inst?.defId ?: "")?.params?.firstOrNull { it.key == key }?.def ?: 0f
-    } else 0f
+    } else {
+        val z = allZones.getOrNull(zoneKeyIndex(name))
+        when (name.substringAfter('.')) { "cx" -> z?.cx; "cy" -> z?.cy; "w" -> z?.w; "h" -> z?.h; else -> null } ?: 0f
+    }
 }
 
 fun Clip.withBaseProp(name: String, v: Float): Clip = when (name) {
@@ -78,14 +80,15 @@ fun Clip.withBaseProp(name: String, v: Float): Clip = when (name) {
     "mask.cy" -> copy(mask = mask.copy(cy = v))
     "mask.w" -> copy(mask = mask.copy(w = v))
     "mask.h" -> copy(mask = mask.copy(h = v))
-    "zone.cx" -> copy(zone = zone.copy(cx = v))
-    "zone.cy" -> copy(zone = zone.copy(cy = v))
-    "zone.w" -> copy(zone = zone.copy(w = v))
-    "zone.h" -> copy(zone = zone.copy(h = v))
     else -> if (name.startsWith("fx:")) {
         val parts = name.split(':')
         copy(effects = effects.map { if (it.id == parts.getOrNull(1)) it.copy(params = it.params + ((parts.getOrNull(2) ?: "") to v)) else it })
-    } else this
+    } else {
+        val zi = zoneKeyIndex(name)
+        val z = allZones.getOrNull(zi)
+        if (z == null) this
+        else withZone(zi, when (name.substringAfter('.')) { "cx" -> z.copy(cx = v); "cy" -> z.copy(cy = v); "w" -> z.copy(w = v); "h" -> z.copy(h = v); else -> z })
+    }
 }
 
 /** Valor actual (con keyframes) en el instante local. */

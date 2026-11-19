@@ -92,6 +92,8 @@ class EditorViewModel(private val context: Context, val container: AppContainer,
     val fullscreen = MutableStateFlow(false)
     /** Página abierta en el panel de IA ("" = lista de funciones). Los accesos directos la fijan antes de abrir el panel. */
     val aiPage = MutableStateFlow("")
+    /** Zona borrosa seleccionada en el panel (la que se mueve al arrastrar en la vista previa). */
+    val zoneSel = MutableStateFlow(0)
     val ai = AiActions(this)
 
     /** Atributos copiados de un clip. */

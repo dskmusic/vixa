@@ -55,7 +55,9 @@ class ExportService : Service() {
                 Build.VERSION.SDK_INT >= 29 -> ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
                 else -> 0
             }
-            ServiceCompat.startForeground(this, NOTIF_ID, build(exporter.state.value), type)
+            val n = build(exporter.state.value)
+            // Directo, sin ServiceCompat: en Android 16 este llegaba al sistema con tipo "none" (InvalidForegroundServiceTypeException).
+            if (Build.VERSION.SDK_INT >= 29) startForeground(NOTIF_ID, n, type) else startForeground(NOTIF_ID, n)
         } catch (e: Throwable) {
             // Sin permiso de notificaciones o inicio no permitido: la exportación sigue en el proceso.
             ErrorLog.log("ExportService", e)

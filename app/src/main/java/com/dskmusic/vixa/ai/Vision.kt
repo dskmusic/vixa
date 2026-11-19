@@ -339,7 +339,7 @@ object Vision {
                 var best = all.indices.maxByOrNull { atTap(all[it]) } ?: 0
                 var m = all[best]
                 // Si el punto tocado queda "fuera" en todas, el modelo devuelve el fondo: se invierte.
-                if (atTap(m) < 0.5f) m = FloatArray(m.size) { 1f - all[0][it] }
+                if (atTap(m) < 0.5f) m = FloatArray(m.size) { 1f - all[best][it] }
                 var lo = Float.MAX_VALUE; var hi = -Float.MAX_VALUE
                 for (v in m) { if (v < lo) lo = v; if (v > hi) hi = v }
                 com.dskmusic.vixa.data.ErrorLog.log("Cutout", "mascaras=" + masks.size + " " + mw + "x" + mh + " elegida=" + best + " rango=" + lo + ".." + hi + " enPunto=" + atTap(m))

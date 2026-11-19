@@ -74,6 +74,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.dskmusic.vixa.R
 import com.dskmusic.vixa.engine.OverlayRender
 import com.dskmusic.vixa.model.Clip
+import com.dskmusic.vixa.model.allZones
+import com.dskmusic.vixa.model.zoneKey
 import com.dskmusic.vixa.model.keyframeNear
 import com.dskmusic.vixa.model.withKeyframe
 import com.dskmusic.vixa.model.withoutKeyframe
@@ -158,6 +160,7 @@ fun Preview(vm: EditorViewModel, project: Project, modifier: Modifier = Modifier
     val positionUs by vm.player.positionUs.collectAsState()
     val selection by vm.selection.collectAsState()
     val tool by vm.tool.collectAsState()
+    val zoneSel by vm.zoneSel.collectAsState()
     val buffering by vm.player.buffering.collectAsState()
     val error by vm.player.error.collectAsState()
     val settings = vm.container.settings.flow.collectAsState().value
@@ -300,7 +303,7 @@ fun Preview(vm: EditorViewModel, project: Project, modifier: Modifier = Modifier
                                 val r = event.calculateRotation()
                                 event.changes.forEach { it.consume() }
                                 if (editMask || editZone) {
-                                    val pre = if (editMask) "mask" else "zone"
+                                    val pre = if (editMask) "mask" else zoneKey(vm.zoneSel.value.coerceIn(0, start.zones.size))
                                     vm.updateClip(R.string.hist_mask, start.id, live = true) { c ->
                                         c.setProp("$pre.w", local0, (c.prop("$pre.w", local0) * z).coerceIn(0.02f, 2f)).setProp("$pre.h", local0, (c.prop("$pre.h", local0) * z).coerceIn(0.02f, 2f))
                                     }
@@ -349,7 +352,7 @@ fun Preview(vm: EditorViewModel, project: Project, modifier: Modifier = Modifier
                             moved = true
                             ch.consume()
                             if (editMask || editZone) {
-                                val pre = if (editMask) "mask" else "zone"
+                                val pre = if (editMask) "mask" else zoneKey(vm.zoneSel.value.coerceIn(0, start.zones.size))
                                 val fw = (frame0?.w ?: w).coerceAtLeast(1f)
                                 val fh = (frame0?.h ?: h).coerceAtLeast(1f)
                                 val ddx = (ch.position.x - ch.previousPosition.x) / fw
@@ -434,13 +437,14 @@ fun Preview(vm: EditorViewModel, project: Project, modifier: Modifier = Modifier
                         }
                         // Máscara / zona: su contorno dentro del clip.
                         if (tool == "mask" || tool == "zone") {
-                            val pre = tool
+                            val zi = zoneSel.coerceIn(0, sel.zones.size)
+                            val pre = if (tool == "mask") "mask" else zoneKey(zi)
                             val mx = f.cx - f.w / 2 + sel.prop("$pre.cx", local) * f.w
                             val my = f.cy - f.h / 2 + sel.prop("$pre.cy", local) * f.h
                             val mw = sel.prop("$pre.w", local) * f.w
                             val mh = sel.prop("$pre.h", local) * f.h
                             val dash = PathEffect.dashPathEffect(floatArrayOf(10f, 6f))
-                            val round = if (tool == "mask") sel.mask.type == com.dskmusic.vixa.model.MaskType.CIRCLE else sel.zone.ellipse
+                            val round = if (tool == "mask") sel.mask.type == com.dskmusic.vixa.model.MaskType.CIRCLE else sel.allZones[zi].ellipse
                             if (round) drawOval(Color.Yellow, Offset(mx - mw / 2, my - mh / 2), Size(mw, mh), style = Stroke(2 * dp, pathEffect = dash))
                             else drawRect(Color.Yellow, Offset(mx - mw / 2, my - mh / 2), Size(mw, mh), style = Stroke(2 * dp, pathEffect = dash))
                             drawCircle(Color.Yellow, 4 * dp, Offset(mx, my))

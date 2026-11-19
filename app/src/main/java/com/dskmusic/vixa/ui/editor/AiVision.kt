@@ -156,6 +156,9 @@ fun CutoutDialog(vm: EditorViewModel, clip: Clip, onDismiss: () -> Unit) {
     var grow by remember { mutableFloatStateOf(0f) }
     var box by remember { mutableStateOf(IntSize.Zero) }
     var tap by remember { mutableStateOf<Offset?>(null) }
+    // Avisos propios: los de vm.toast se pintan en el editor, debajo de este diálogo, y no se verían.
+    var msg by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(msg) { if (msg != null) { kotlinx.coroutines.delay(3500); msg = null } }
     LaunchedEffect(path) { bmp = withContext(Dispatchers.IO) { try { Vision.decode(path, 1024) } catch (e: Throwable) { ErrorLog.log("Cutout/decode", e); null } } }
     LaunchedEffect(mask, soft, grow) {
         val m = mask
@@ -212,12 +215,12 @@ fun CutoutDialog(vm: EditorViewModel, clip: Clip, onDismiss: () -> Unit) {
                                         val r = Vision.subjectMask(store, b, nx, ny)
                                         // Si no se ha seleccionado nada (o casi todo), se avisa en vez de dejar la pantalla igual.
                                         val cover = r.first.count { it > 0.5f }.toFloat() / r.first.size.coerceAtLeast(1)
-                                        if (cover < 0.004f || cover > 0.97f) vm.toast(vm.str(R.string.ai_cutout_none)) else mask = r
+                                        if (cover < 0.004f || cover > 0.97f) msg = vm.str(R.string.ai_cutout_none) else mask = r
                                     } catch (e: kotlinx.coroutines.CancellationException) {
                                         throw e
                                     } catch (e: Throwable) {
                                         ErrorLog.log("Cutout", e)
-                                        vm.toast(vm.str(R.string.err_generic))
+                                        msg = vm.str(R.string.err_generic)
                                     } finally {
                                         busy = false
                                     }
@@ -228,6 +231,7 @@ fun CutoutDialog(vm: EditorViewModel, clip: Clip, onDismiss: () -> Unit) {
                 ) {
                     if (shown != null) Image(shown.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
                     if (busy || shown == null) CircularProgressIndicator()
+                    msg?.let { Text(it, Modifier.align(Alignment.BottomCenter).padding(8.dp).background(Color(0xCC000000)).padding(horizontal = 12.dp, vertical = 8.dp), color = Color.White, style = MaterialTheme.typography.bodyMedium) }
                     // Marca del último toque: confirma dónde se ha tocado.
                     tap?.let { t -> Canvas(Modifier.fillMaxSize()) { drawCircle(Color.Black, 14.dp.toPx(), t, style = androidx.compose.ui.graphics.drawscope.Stroke(5.dp.toPx())); drawCircle(Color.White, 14.dp.toPx(), t, style = androidx.compose.ui.graphics.drawscope.Stroke(2.5.dp.toPx())) } }
                 }
@@ -260,7 +264,7 @@ fun CutoutDialog(vm: EditorViewModel, clip: Clip, onDismiss: () -> Unit) {
                                         throw e
                                     } catch (e: Throwable) {
                                         ErrorLog.log("Cutout/save", e)
-                                        vm.toast(vm.str(R.string.err_generic))
+                                        msg = vm.str(R.string.err_generic)
                                         busy = false
                                     }
                                 }

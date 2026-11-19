@@ -591,7 +591,7 @@ fun Project.pasteAttributes(from: Clip, toIds: Collection<String>, attrs: Set<At
     if (Attr.COLOR in attrs) r = r.copy(color = from.color)
     if (Attr.FILTER in attrs) r = r.copy(filterId = from.filterId, filterIntensity = from.filterIntensity, lutPath = from.lutPath)
     if (Attr.EFFECTS in attrs) r = r.copy(effects = from.effects.map { it.copy(id = newId()) })
-    if (Attr.MASK in attrs) r = r.copy(mask = from.mask, chroma = from.chroma, zone = from.zone)
+    if (Attr.MASK in attrs) r = r.copy(mask = from.mask, chroma = from.chroma, zone = from.zone, zones = from.zones)
     if (Attr.ANIMATION in attrs) r = r.copy(animIn = from.animIn, animOut = from.animOut, animLoop = from.animLoop)
     if (Attr.AUDIO in attrs) r = r.copy(volume = from.volume, fadeInUs = from.fadeInUs, fadeOutUs = from.fadeOutUs, audioFx = from.audioFx)
     if (Attr.SPEED in attrs && c.hasTimedMedia) r = r.copy(speed = from.speed, speedCurve = from.speedCurve, keepPitch = from.keepPitch)

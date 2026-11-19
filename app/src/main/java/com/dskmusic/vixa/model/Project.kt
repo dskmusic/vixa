@@ -196,6 +196,33 @@ data class Zone(
     val strength: Float = 0.5f,
 )
 
+/** Zonas por clip: la primera es [Clip.zone] (proyectos antiguos) y el resto [Clip.zones]. Tope por coste del shader. */
+const val MAX_ZONES = 4
+
+/** Prefijo de las claves animables de la zona [i]: "zone" para la primera (compatible), "zone1", "zone2"... para el resto. */
+fun zoneKey(i: Int): String = if (i == 0) "zone" else "zone$i"
+
+private val ZONE_KEY = Regex("""^zone(\d*)\.""")
+
+/** Índice de zona de una clave animable ("zone.cx" -> 0, "zone2.w" -> 2) o -1 si no es de zona. */
+fun zoneKeyIndex(key: String): Int = ZONE_KEY.find(key)?.groupValues?.get(1)?.let { if (it.isEmpty()) 0 else it.toInt() } ?: -1
+
+val Clip.allZones: List<Zone> get() = listOf(zone) + zones
+
+fun Clip.withZone(i: Int, z: Zone): Clip = if (i == 0) copy(zone = z) else copy(zones = zones.toMutableList().also { it[i - 1] = z })
+
+/** Quita la zona [i] con sus keyframes; las siguientes bajan un puesto. Si era la única, queda una zona vacía. */
+fun Clip.removeZone(i: Int): Clip {
+    val all = allZones.toMutableList()
+    all.removeAt(i)
+    if (all.isEmpty()) all.add(Zone())
+    val kfs = keyframes.filterKeys { zoneKeyIndex(it) != i }.mapKeys { (k, _) ->
+        val j = zoneKeyIndex(k)
+        if (j > i) zoneKey(j - 1) + "." + k.substringAfter('.') else k
+    }
+    return copy(zone = all[0], zones = all.drop(1), keyframes = kfs)
+}
+
 @Serializable
 data class AnimRef(val id: String, val durationUs: Long = 500_000L)
 
@@ -411,6 +438,8 @@ data class Clip(
     val chroma: ChromaKey = ChromaKey(),
     val mask: Mask = Mask(),
     val zone: Zone = Zone(),
+    /** Zonas adicionales (2.ª en adelante); ver [allZones]. */
+    val zones: List<Zone> = emptyList(),
     val keyframes: Map<String, List<Keyframe>> = emptyMap(),
     val animIn: AnimRef? = null,
     val animOut: AnimRef? = null,

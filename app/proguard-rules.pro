@@ -7,6 +7,16 @@
 -keep class com.k2fsa.sherpa.onnx.** { *; }
 -keep class com.google.mediapipe.** { *; }
 -keep class com.google.protobuf.** { *; }
+# Flogger (lo usa MediaPipe en com.google.mediapipe.framework.Graph) busca su clase en la pila por nombre: si R8 la
+# renombra o la inserta en línea, Graph no se inicializa ("no caller found on the stack") y toda la visión falla.
+-keep class com.google.common.flogger.** { *; }
+-dontwarn com.google.common.flogger.**
+# ML Kit (recorte de sujetos): R8 optimizaba sus clases internas y el resultado llegaba con campos nulos. Se conserva
+# ENTERO: su inyección de dependencias enlaza clases de todos sus paquetes y, si se conserva solo una parte, la app no
+# arranca ("Unsatisfied dependency for component" en MlKitInitProvider).
+-keep class com.google.mlkit.** { *; }
+-keep class com.google.android.gms.internal.mlkit_** { *; }
+-keep class com.google.firebase.components.** { *; }
 -dontwarn ai.onnxruntime.**
 -dontwarn com.k2fsa.sherpa.onnx.**
 -dontwarn com.google.mediapipe.**

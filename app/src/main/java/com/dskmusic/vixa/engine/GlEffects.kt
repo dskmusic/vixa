@@ -23,6 +23,8 @@ import com.dskmusic.vixa.model.MaskType
 import com.dskmusic.vixa.model.Project
 import com.dskmusic.vixa.model.TrackType
 import com.dskmusic.vixa.model.ZoneType
+import com.dskmusic.vixa.model.MAX_ZONES
+import com.dskmusic.vixa.model.zoneKey
 import com.dskmusic.vixa.model.kf
 import com.dskmusic.vixa.model.sourceOffsetAt
 import java.io.BufferedReader
@@ -37,6 +39,10 @@ import kotlin.math.sin
  * Contexto de render compartido por todos los efectos de una composición. Los efectos leen el proyecto
  * en vivo a través de [project]: mover un slider no obliga a reconstruir la composición.
  */
+private val ZONE_U = Array(MAX_ZONES) { if (it == 0) "uZone" else "uZone$it" }
+private val ZONE_UP = Array(MAX_ZONES) { ZONE_U[it] + "P" }
+private val ZONE_KF = Array(MAX_ZONES) { i -> zoneKey(i).let { k -> arrayOf("$k.cx", "$k.cy", "$k.w", "$k.h") } }
+
 class RenderCtx(
     val appContext: Context,
     val canvasW: Int,
@@ -45,6 +51,11 @@ class RenderCtx(
 ) {
     /** Tiempo del último fotograma compuesto (lo escribe la pasada MODE_FRAME); da el progreso real de la exportación. */
     @Volatile var renderedUs = 0L
+    /**
+     * Vista previa de una sola entrada (sin compositor): la pasada MODE_FRAME recibe directamente la salida de ClipEffect y
+     * espera color premultiplicado; sin esto el color de las zonas transparentes (bordes estirados, recortes) se ve.
+     */
+    @Volatile var premultiply = false
 }
 
 /** Desplazamientos de estabilización por medio: pares (dx, dy) en fracción del encuadre, a 10 muestras/s. */
@@ -177,7 +188,7 @@ private class ClipProgram(
 
     private val m0 = FloatArray(3)
     private val m1 = FloatArray(3)
-    private val v = Array(30) { FloatArray(4) }
+    private val v = Array(36) { FloatArray(4) }
 
     init {
         try {
@@ -417,10 +428,17 @@ private class ClipProgram(
             set("uMask", f4(13, c.kf("mask.cx", local, mk.cx), c.kf("mask.cy", local, mk.cy), c.kf("mask.w", local, mk.w), c.kf("mask.h", local, mk.h)))
             set("uMaskP", f4(14, maskType, Math.toRadians(mk.rotation.toDouble()).toFloat(), mk.feather * 0.5f, if (mk.invert) 1f else 0f))
 
-            val zn = c.zone
-            val zoneType = when (zn.type) { ZoneType.NONE -> 0f; ZoneType.BLUR -> 1f; ZoneType.MOSAIC -> 2f }
-            set("uZone", f4(15, c.kf("zone.cx", local, zn.cx), c.kf("zone.cy", local, zn.cy), c.kf("zone.w", local, zn.w), c.kf("zone.h", local, zn.h)))
-            set("uZoneP", f4(16, zoneType, if (zn.ellipse) 1f else 0f, zn.strength, anim.blur))
+            // Zonas: la primera usa los huecos 15/16 (su .w lleva además el desenfoque de la animación); el resto 30..35.
+            for (i in 0 until MAX_ZONES) {
+                val zn = if (i == 0) c.zone else c.zones.getOrNull(i - 1)
+                val s = if (i == 0) 15 else 28 + 2 * i
+                val ab = if (i == 0) anim.blur else 0f
+                if (zn == null) { set(ZONE_UP[i], f4(s + 1, 0f, 0f, 0f, ab)); continue }
+                val zoneType = when (zn.type) { ZoneType.NONE -> 0f; ZoneType.BLUR -> 1f; ZoneType.MOSAIC -> 2f }
+                val k = ZONE_KF[i]
+                set(ZONE_U[i], f4(s, c.kf(k[0], local, zn.cx), c.kf(k[1], local, zn.cy), c.kf(k[2], local, zn.w), c.kf(k[3], local, zn.h)))
+                set(ZONE_UP[i], f4(s + 1, zoneType, if (zn.ellipse) 1f else 0f, zn.strength, ab))
+            }
             set("uReveal", f4(17, anim.revealL, anim.revealT, anim.revealR, anim.revealB))
 
             val fill = c.fill
@@ -436,7 +454,7 @@ private class ClipProgram(
             set("uGen1", g1)
             set("uGen2", g2)
             set("uGen3", g3)
-            set("uGenQ", f4(29, (fill?.colors?.size ?: 1).coerceIn(1, 4).toFloat(), if (fill?.radial == true) 1f else 0f, 0f, 0f))
+            set("uGenQ", f4(29, (fill?.colors?.size ?: 1).coerceIn(1, 4).toFloat(), if (fill?.radial == true) 1f else 0f, if (ctx.premultiply) 1f else 0f, 0f))
             val blurBg = isMain && !generator && p.background.type == BgType.BLUR
             set("uGenP", f4(20, Math.toRadians((fill?.angle ?: 0f).toDouble()).toFloat(), if ((fill?.colors?.size ?: 0) > 1) 1f else 0f,
                 if (blurBg) 1f else 0f, p.background.blur))
