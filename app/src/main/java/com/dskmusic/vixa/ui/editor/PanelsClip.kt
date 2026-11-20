@@ -434,11 +434,13 @@ fun TransitionPanel(vm: EditorViewModel, c: Clip, isFirst: Boolean) {
         }
     }
     val tr = c.transitionIn
-    if (tr != null) {
+    // En una superposición la duración es el solape entre los clips (se cambia moviéndolos o recortándolos).
+    val onOverlay = vm.project.value?.trackOf(c.id)?.type == com.dskmusic.vixa.model.TrackType.OVERLAY
+    if (tr != null && !onOverlay) {
         PreciseSlider(stringResource(R.string.duration), tr.durationUs / 1_000_000f, { v -> vm.updateClip(h, c.id, live = true) { it.copy(transitionIn = tr.copy(durationUs = (v * 1_000_000f).toLong())) } },
             range = 0.1f..3f, default = 0.5f, onFinished = { vm.commit() }, format = ::secs, inputScale = 1f)
     }
-    OutlinedButton({ vm.edit(h) { it.applyTransitionToAll(tr) } }, Modifier.padding(horizontal = 16.dp)) { Text(stringResource(R.string.apply_to_all)) }
+    if (!onOverlay) OutlinedButton({ vm.edit(h) { it.applyTransitionToAll(tr) } }, Modifier.padding(horizontal = 16.dp)) { Text(stringResource(R.string.apply_to_all)) }
 }
 
 @Composable

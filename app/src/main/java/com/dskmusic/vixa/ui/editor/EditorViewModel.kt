@@ -34,6 +34,7 @@ import com.dskmusic.vixa.model.cutToSourceRanges
 import com.dskmusic.vixa.model.insertFreeze
 import com.dskmusic.vixa.model.insertMain
 import com.dskmusic.vixa.model.mainIndexAt
+import com.dskmusic.vixa.model.mainIndexAfter
 import com.dskmusic.vixa.model.newId
 import com.dskmusic.vixa.model.normalized
 import com.dskmusic.vixa.model.pasteAttributes
@@ -336,6 +337,8 @@ class EditorViewModel(private val context: Context, val container: AppContainer,
 
     fun addMedia(paths: List<String>, target: AddTarget, forceType: MediaType? = null) {
         if (paths.isEmpty()) return
+        // Posición del cabezal al pedir la inserción (la importación tarda y la reproducción podría moverlo).
+        val pos = player.positionUs.value
         background(R.string.busy_importing) { progress ->
             val refs = ArrayList<MediaRef>()
             val failed = ArrayList<String>()
@@ -353,7 +356,6 @@ class EditorViewModel(private val context: Context, val container: AppContainer,
             if (refs.isEmpty()) return@background
             container.settings.update { s -> s.copy(recentMedia = (paths + s.recentMedia).distinct().take(40)) }
             val imageUs = settings.imageDurationMs * 1000L
-            val pos = player.positionUs.value
             when (target) {
                 AddTarget.STICKER -> {
                     val (anim, still) = refs.partition { ImageCache.isAnimatedFile(it.path) }
@@ -365,7 +367,7 @@ class EditorViewModel(private val context: Context, val container: AppContainer,
                 AddTarget.MAIN -> edit(R.string.hist_add_media) { p ->
                     val clips = refs.map { Importer.clipFor(it, imageUs) }.filter { it.kind != ClipKind.AUDIO }
                     val audio = refs.filter { !it.hasVideo && !it.isImage }
-                    var r = if (clips.isEmpty()) p else p.insertMain(clips, if (p.mainTrack.clips.isEmpty()) -1 else p.mainIndexAt(pos))
+                    var r = if (clips.isEmpty()) p else p.insertMain(clips, if (p.mainTrack.clips.isEmpty()) -1 else p.mainIndexAfter(pos))
                     var at = pos
                     for (a in audio) { r = r.addToTrack(Importer.clipFor(a, imageUs, asAudio = true).copy(startUs = at), TrackType.AUDIO); at += a.durationUs }
                     r
@@ -393,7 +395,7 @@ class EditorViewModel(private val context: Context, val container: AppContainer,
 
     fun addColor(fill: ColorFill, durationUs: Long, atStart: Boolean? = null) = edit(R.string.hist_add_color) { p ->
         val c = Clip(kind = ClipKind.COLOR, durationUs = durationUs, fill = fill)
-        p.insertMain(listOf(c), when (atStart) { true -> 0; false -> -1; null -> if (p.mainTrack.clips.isEmpty()) -1 else p.mainIndexAt(player.positionUs.value) })
+        p.insertMain(listOf(c), when (atStart) { true -> 0; false -> -1; null -> if (p.mainTrack.clips.isEmpty()) -1 else p.mainIndexAfter(player.positionUs.value) })
     }
 
     fun addText(spec: TextSpec? = null) {

@@ -181,6 +181,7 @@ fun ExportDialog(
                             ExportStatus.RUNNING -> {
                                 LinearProgressIndicator({ state.progress }, Modifier.fillMaxWidth())
                                 Text(String.format(Locale.US, "%.0f%%", state.progress * 100f) + if (state.etaMs > 0) "  ·  " + stringResource(R.string.export_eta, ExportService.formatEta(state.etaMs)) else "")
+                                if (state.phase.isNotEmpty()) Text(state.phase, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium)
                                 if (state.warning.isNotEmpty()) Text(state.warning, color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.bodySmall)
                                 Text(stringResource(R.string.export_background_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 OutlinedButton({ container.exporter.cancel() }) { Text(stringResource(R.string.cancel)) }

@@ -27,13 +27,23 @@ fun clipGain(p: Project, c: Clip, localUs: Long): Float {
     if (c.fadeInUs > 0 && localUs < c.fadeInUs) g *= localUs.toFloat() / c.fadeInUs
     val rest = c.durationUs - localUs
     if (c.fadeOutUs > 0 && rest < c.fadeOutUs) g *= (rest.toFloat() / c.fadeOutUs).coerceAtLeast(0f)
-    if (track.type == TrackType.MAIN) {
+    if (track.type == TrackType.MAIN || track.type == TrackType.OVERLAY) {
         // Fundido cruzado de audio durante las transiciones.
         val ti = c.transitionIn
         if (ti != null && ti.durationUs > 0 && localUs < ti.durationUs) g *= localUs.toFloat() / ti.durationUs
         val i = track.clips.indexOf(c)
         val to = track.clips.getOrNull(i + 1)?.transitionIn
         if (to != null && to.durationUs > 0 && rest < to.durationUs) g *= (rest.toFloat() / to.durationUs).coerceAtLeast(0f)
+    }
+    if (track.type == TrackType.AUDIO) {
+        // Crossfade automático con el clip anterior / siguiente de la misma pista cuando se solapan (potencia constante).
+        val i = track.clips.indexOfFirst { it.id == c.id }
+        val prev = track.clips.getOrNull(i - 1)
+        val next = track.clips.getOrNull(i + 1)
+        val inOv = if (prev != null) prev.endUs - c.startUs else 0L
+        if (inOv > 0 && localUs < inOv) g *= sin(localUs.toFloat() / inOv * (PI.toFloat() / 2f))
+        val outOv = if (next != null) c.endUs - next.startUs else 0L
+        if (outOv > 0 && rest < outOv) g *= sin((rest.toFloat() / outOv).coerceAtLeast(0f) * (PI.toFloat() / 2f))
     }
     val ducks = c.audioFx.duck || (p.autoDuck && c.kind == ClipKind.AUDIO && !c.audioFx.isVoice)
     if (ducks) {

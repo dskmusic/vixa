@@ -518,8 +518,9 @@ private fun ProjectCard(container: AppContainer, info: ProjectInfo, onOpen: (Str
             AlertDialog(
                 onDismissRequest = { if (!working) dialog = "" },
                 title = { Text(stringResource(if (share) R.string.share_project else R.string.export_project)) },
-                text = { if (working) CircularProgressIndicator() else Text(stringResource(R.string.vixa_include_media_hint)) },
-                confirmButton = { TextButton({ run(true) }, enabled = !working) { Text(stringResource(R.string.with_media)) } },
+                text = { if (working) CircularProgressIndicator() else Text(stringResource(R.string.vixa_share_hint)) },
+                // Con medios es la opción recomendada: el proyecto no depende de lo que haya en el móvil de quien lo recibe.
+                confirmButton = { androidx.compose.material3.Button({ run(true) }, enabled = !working) { Text(stringResource(R.string.with_media)) } },
                 dismissButton = { TextButton({ run(false) }, enabled = !working) { Text(stringResource(R.string.project_only)) } },
             )
         }

@@ -56,6 +56,8 @@ data class ExportState(
     val output: String = "",
     val message: String = "",
     val warning: String = "",
+    // Fase final (rematar el archivo): se avisa para que no parezca que la exportación se ha quedado colgada.
+    val phase: String = "",
 )
 
 /**
@@ -77,7 +79,8 @@ class Exporter(context: Context) {
     private var startMs = 0L
     @Volatile private var cancelled = false
 
-    private class Attempt(val mime: String, val shortSide: Int, val software: Boolean, val passthrough: Boolean)
+    // [portrait]: codificar el vertical como vertical de verdad (sin marca de giro, que muchas teles ignoran o rechazan).
+    private class Attempt(val mime: String, val shortSide: Int, val software: Boolean, val passthrough: Boolean, val portrait: Boolean = false)
 
     val isRunning: Boolean get() = _state.value.status == ExportStatus.RUNNING
 
@@ -181,6 +184,14 @@ class Exporter(context: Context) {
             val mime = if (gifOrFrame) MimeTypes.VIDEO_H264 else if (webm) MimeTypes.VIDEO_VP9 else settings.codec.mime
             val side = if (settings.kind == ExportKind.GIF) minOf(settings.gifWidth, settings.shortSide) else settings.shortSide
             if (passthroughEligible(p, settings)) attempts.add(Attempt(mime, side, false, true))
+            val (ow, oh) = settings.outputSize(p.width, p.height)
+            // Vertical: primero se intenta codificar en vertical; algunos codificadores no lo admiten y entonces se repite
+            // en horizontal con marca de giro (lo que hacía siempre Transformer).
+            // Solo si el codificador que se usaría admite ese tamaño en vertical: si no, Transformer reduciría la resolución
+            // en silencio en lugar de fallar.
+            if (settings.kind == ExportKind.VIDEO && !webm && oh > ow && portraitSupported(mime, ow, oh, settings.fps, !settings.hardware)) {
+                attempts.add(Attempt(mime, side, !settings.hardware, false, portrait = true))
+            }
             attempts.add(Attempt(mime, side, !settings.hardware, false))
             if (mime != MimeTypes.VIDEO_H264 && !webm) attempts.add(Attempt(MimeTypes.VIDEO_H264, side, false, false))
             if (side > 720) attempts.add(Attempt(if (webm) mime else MimeTypes.VIDEO_H264, 720, false, false))
@@ -223,6 +234,7 @@ class Exporter(context: Context) {
                 .setVideoFrameProcessorFactory(CompositionBuilder.frameProcessorFactory())
                 .setAudioMimeType(if (webm) MimeTypes.AUDIO_OPUS else MimeTypes.AUDIO_AAC)
             if (s.kind != ExportKind.AUDIO) tb.setVideoMimeType(a.mime)
+            tb.setPortraitEncodingEnabled(a.portrait)
             if (webm) tb.setMuxerFactory(InAppMp4Muxer.Factory())
             if (a.passthrough) tb.experimentalSetTrimOptimizationEnabled(true)
             val ef = DefaultEncoderFactory.Builder(app).setEnableFallback(true)
@@ -254,7 +266,7 @@ class Exporter(context: Context) {
                         val next = attempts[index + 1]
                         val w2 = str(R.string.export_retry_warning, next.mime.substringAfter('/'), next.shortSide) +
                             (if (next.software) " (software)" else "")
-                        _state.value = _state.value.copy(progress = 0f, etaMs = -1, warning = w2)
+                        _state.value = _state.value.copy(progress = 0f, etaMs = -1, warning = w2, phase = "")
                         startMs = SystemClock.elapsedRealtime()
                         main.post { runAttempt(p, s, target, attempts, index + 1, w2) }
                     } else {
@@ -266,7 +278,13 @@ class Exporter(context: Context) {
             transformer = t
             t.start(composition, tmp.absolutePath)
             // El GIF reserva la segunda mitad de la barra para su post-proceso.
-            pollProgress(t, renderCtx, frozen.durationUs, if (s.kind == ExportKind.GIF) 0.5f else 0.97f)
+            // Reparto de la barra: el MP4 deja el último 15 % para vaciar el codificador y rematar el archivo (remux).
+            val scale = when {
+                s.kind == ExportKind.GIF -> 0.5f
+                s.kind == ExportKind.VIDEO && s.container == Container.MP4 -> 0.85f
+                else -> 0.97f
+            }
+            pollProgress(t, renderCtx, frozen.durationUs, scale)
         } catch (e: Throwable) {
             ErrorLog.log("Export", e)
             if (tmp.exists()) tmp.delete()
@@ -297,7 +315,13 @@ class Exporter(context: Context) {
                         val rate = if (now > t0 && pr > p0) (pr - p0) / (now - t0).toFloat() else 0f
                         val eta = if (pr > 0.02f && rate > 0f) ((1f - pr) / rate).toLong() else -1
                         shown = maxOf(shown, pr * scale)
-                        _state.value = _state.value.copy(progress = shown, etaMs = eta)
+                        if (pr >= 0.995f) {
+                            // Todos los fotogramas compuestos: el codificador y el multiplexor aún se vacían y no hay forma de
+                            // medirlo. La barra sigue avanzando despacio (sin llegar al final) para que no parezca colgada.
+                            shown = maxOf(shown, shown + (scale + 0.07f - shown) * 0.08f)
+                            if (_state.value.phase.isEmpty()) _state.value = _state.value.copy(phase = str(R.string.export_phase_finishing))
+                        }
+                        _state.value = _state.value.copy(progress = shown, etaMs = if (pr >= 0.995f) -1 else eta)
                     }
                 } catch (e: Throwable) {
                     return
@@ -313,6 +337,7 @@ class Exporter(context: Context) {
         var out = target
         try {
             if (cancelled) { tmp.delete(); return }
+            _state.value = _state.value.copy(etaMs = -1, phase = str(if (s.kind == ExportKind.GIF) R.string.export_phase_gif else R.string.export_phase_finishing))
             when (s.kind) {
                 ExportKind.GIF -> {
                     val part = File(target.parentFile, ".vixa_tmp_" + target.name)
@@ -349,13 +374,37 @@ class Exporter(context: Context) {
                             if (!tmp.renameTo(out)) throw IllegalStateException("rename")
                             warn = str(R.string.export_webm_fallback)
                         }
+                    } else if (s.kind == ExportKind.VIDEO && s.container == Container.MP4) {
+                        // Compatibilidad con teles / DLNA / Chromecast (p. ej. al enviarlo con Kast): pista de vídeo la primera y
+                        // nivel H.264 ajustado a lo que de verdad necesita el vídeo (el codificador declara el máximo, p. ej. 6.0,
+                        // y muchas teles rechazan el archivo sin intentarlo).
+                        val part = File(target.parentFile, ".vixa_tmp_tv_" + target.name)
+                        val from = _state.value.progress
+                        var lastUi = 0L
+                        val ok = try {
+                            remuxForTv(tmp, part, s.fps) { f ->
+                                val now = SystemClock.elapsedRealtime()
+                                if (now - lastUi > 150) {
+                                    lastUi = now
+                                    _state.value = _state.value.copy(progress = maxOf(_state.value.progress, from + (0.995f - from) * f))
+                                }
+                            }
+                        } catch (e: Throwable) { ErrorLog.log("Export/tv", e); false }
+                        if (cancelled) { part.delete(); tmp.delete(); return }
+                        if (ok) {
+                            tmp.delete()
+                            if (!part.renameTo(target)) throw IllegalStateException("rename")
+                        } else {
+                            part.delete()
+                            if (!tmp.renameTo(target)) throw IllegalStateException("rename")
+                        }
                     } else if (!tmp.renameTo(target)) throw IllegalStateException("rename")
                     if (s.kind == ExportKind.VIDEO && s.saveCover) saveCover(out, p)
                 }
             }
             tempFile = null
             MediaScannerConnection.scanFile(app, arrayOf(out.absolutePath), null, null)
-            _state.value = _state.value.copy(status = ExportStatus.DONE, progress = 1f, etaMs = 0, output = out.absolutePath, warning = warn)
+            _state.value = _state.value.copy(status = ExportStatus.DONE, progress = 1f, etaMs = 0, output = out.absolutePath, warning = warn, phase = "")
         } catch (e: Throwable) {
             ErrorLog.log("Export/finish", e)
             tmp.delete()
@@ -412,6 +461,131 @@ class Exporter(context: Context) {
         } finally {
             r.release()
         }
+    }
+
+    /**
+     * Remultiplexa el MP4 final (sin recodificar) con el vídeo como primera pista y, si es H.264, con el nivel del SPS
+     * rebajado al mínimo que necesitan la resolución y los fps. Devuelve false si no hay nada que hacer o no se pudo.
+     */
+    private fun remuxForTv(src: File, dst: File, fps: Int, onProgress: (Float) -> Unit = {}): Boolean {
+        val ex = MediaExtractor()
+        ex.setDataSource(src.absolutePath)
+        var muxer: MediaMuxer? = null
+        try {
+            val tracks = (0 until ex.trackCount).map { it to ex.getTrackFormat(it) }
+            fun mimeOf(f: android.media.MediaFormat): String = f.getString(android.media.MediaFormat.KEY_MIME) ?: ""
+            val videoIdx = tracks.indexOfFirst { mimeOf(it.second).startsWith("video/") }
+            if (videoIdx < 0) return false
+            val vf = tracks[videoIdx].second
+            val avc = mimeOf(vf) == MimeTypes.VIDEO_H264
+            val vw = vf.getInteger(android.media.MediaFormat.KEY_WIDTH)
+            val vh = vf.getInteger(android.media.MediaFormat.KEY_HEIGHT)
+            val level = if (avc) avcLevelFor(vw, vh, fps.coerceIn(1, 120)) else -1
+            var needLevel = false
+            if (avc) {
+                vf.getByteBuffer("csd-0")?.let { b ->
+                    val arr = ByteArray(b.remaining())
+                    b.duplicate().get(arr)
+                    if (patchSpsLevel(arr, arr.size, level)) { needLevel = true; vf.setByteBuffer("csd-0", ByteBuffer.wrap(arr)) }
+                }
+            }
+            if (videoIdx == 0 && !needLevel) return false
+            val rot = try {
+                val r = MediaMetadataRetriever()
+                try { r.setDataSource(src.absolutePath); r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0 } finally { r.release() }
+            } catch (e: Throwable) { 0 }
+            val m = MediaMuxer(dst.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+            muxer = m
+            if (rot != 0) m.setOrientationHint(rot)
+            val map = HashMap<Int, Int>()
+            var maxSize = 1 shl 20
+            // Primero el vídeo, luego el resto.
+            val order = listOf(tracks[videoIdx]) + tracks.filterIndexed { i, _ -> i != videoIdx }
+            for ((i, f) in order) {
+                ex.selectTrack(i)
+                map[i] = m.addTrack(f)
+                if (f.containsKey(android.media.MediaFormat.KEY_MAX_INPUT_SIZE)) maxSize = maxOf(maxSize, f.getInteger(android.media.MediaFormat.KEY_MAX_INPUT_SIZE))
+            }
+            m.start()
+            var buf = ByteBuffer.allocate(maxSize * 2)
+            var arr = ByteArray(0)
+            val info = MediaCodec.BufferInfo()
+            val vTrack = tracks[videoIdx].first
+            val totalUs = tracks.maxOf { (_, f) -> if (f.containsKey(android.media.MediaFormat.KEY_DURATION)) f.getLong(android.media.MediaFormat.KEY_DURATION) else 0L }
+            while (true) {
+                if (cancelled) return false
+                val need = ex.sampleSize
+                if (need > buf.capacity()) buf = ByteBuffer.allocate(need.toInt() + 1024)
+                buf.clear()
+                val size = ex.readSampleData(buf, 0)
+                if (size < 0) break
+                val key = ex.sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC != 0
+                // SPS repetidos dentro de los fotogramas clave: mismo nivel que en la cabecera.
+                if (needLevel && key && ex.sampleTrackIndex == vTrack) {
+                    if (arr.size < size) arr = ByteArray(size)
+                    buf.position(0)
+                    buf.get(arr, 0, size)
+                    if (patchSpsLevel(arr, size, level)) { buf.clear(); buf.put(arr, 0, size) }
+                }
+                buf.position(0)
+                buf.limit(size)
+                info.set(0, size, ex.sampleTime.coerceAtLeast(0), if (key) MediaCodec.BUFFER_FLAG_KEY_FRAME else 0)
+                m.writeSampleData(map[ex.sampleTrackIndex] ?: 0, buf, info)
+                if (totalUs > 0) onProgress((info.presentationTimeUs.toFloat() / totalUs).coerceIn(0f, 1f))
+                ex.advance()
+            }
+            m.stop()
+            onProgress(1f)
+            return true
+        } finally {
+            try { muxer?.release() } catch (e: Throwable) { }
+            ex.release()
+        }
+    }
+
+    /** ¿El codificador que elegiría la exportación admite [w]x[h] (vertical) a [fps]? */
+    private fun portraitSupported(mime: String, w: Int, h: Int, fps: Int, software: Boolean): Boolean = try {
+        val all = EncoderUtil.getSupportedEncoders(mime)
+        val pool = if (software) all.filter { !EncoderUtil.isHardwareAccelerated(it, mime) }.ifEmpty { all } else all
+        val caps = pool.firstOrNull()?.getCapabilitiesForType(mime)?.videoCapabilities
+        caps != null && caps.areSizeAndRateSupported(w, h, fps.toDouble())
+    } catch (e: Throwable) {
+        false
+    }
+
+    /** level_idc H.264 mínimo (y muy compatible) para [w]x[h] a [fps]: 4.1 hasta 1080p30, 4.2 hasta 1080p60, 5.x para 4K. */
+    private fun avcLevelFor(w: Int, h: Int, fps: Int): Int {
+        val mbs = ((w + 15) / 16).toLong() * ((h + 15) / 16)
+        val mbps = mbs * fps
+        return when {
+            mbs <= 8192 && mbps <= 245_760 -> 41
+            mbs <= 8704 && mbps <= 522_240 -> 42
+            mbs <= 22_080 && mbps <= 589_824 -> 50
+            mbs <= 36_864 && mbps <= 983_040 -> 51
+            else -> 52
+        }
+    }
+
+    /**
+     * Rebaja el level_idc de los SPS (formato con códigos de inicio) de [data] a [level] si declaran uno mayor. Solo se
+     * cambia un byte de longitud fija, así que el flujo sigue siendo válido. Recorre únicamente las NAL iniciales.
+     */
+    private fun patchSpsLevel(data: ByteArray, len: Int, level: Int): Boolean {
+        if (level <= 0) return false
+        var changed = false
+        var i = 0
+        while (i + 3 < len) {
+            if (data[i].toInt() == 0 && data[i + 1].toInt() == 0 && data[i + 2].toInt() == 1) {
+                val h = i + 3
+                val type = data[h].toInt() and 0x1F
+                if (type == 7 && h + 3 < len) {
+                    val cur = data[h + 3].toInt() and 0xFF
+                    if (cur > level) { data[h + 3] = level.toByte(); changed = true }
+                } else if (type in 1..5) break // datos del fotograma: no hay más SPS por delante
+                i = h + 1
+            } else i++
+        }
+        return changed
     }
 
     /** Remultiplexa MP4 (VP9 + Opus) a WebM con las API de plataforma. */

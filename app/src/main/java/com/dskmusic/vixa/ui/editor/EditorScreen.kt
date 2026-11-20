@@ -521,7 +521,7 @@ private fun ToolPanel(vm: EditorViewModel, p: Project, tool: String, clip: Clip?
                 "filter" -> FilterPanel(vm, clip) { pick(PickRequest(PickKind.FILE, exts = setOf("cube")) { f -> f.firstOrNull()?.let { path -> vm.updateClip(R.string.hist_filter, clip.id) { it.copy(lutPath = path, filterIntensity = 1f) } } }) }
                 "adjust" -> AdjustPanel(vm, clip)
                 "effects" -> EffectsPanel(vm, clip)
-                "transition" -> TransitionPanel(vm, clip, p.mainTrack.clips.firstOrNull()?.id == clip.id)
+                "transition" -> TransitionPanel(vm, clip, p.trackOf(clip.id)?.clips?.firstOrNull()?.id == clip.id)
                 "chroma" -> ChromaPanel(vm, clip)
                 "mask" -> MaskPanel(vm, clip)
                 "zone" -> ZonePanel(vm, clip)

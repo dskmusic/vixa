@@ -153,10 +153,10 @@ object CompositionBuilder {
                     .build(),
             )
 
-            fun visualItem(c: Clip, isMain: Boolean, onTop: Boolean, outId: String): EditedMediaItem {
+            fun visualItem(c: Clip, isMain: Boolean, onTop: Boolean, outId: String, trans: Boolean = isMain): EditedMediaItem {
                 val effects = ArrayList<Effect>()
                 if (c.kind != ClipKind.COLOR) for (e in c.effects) effects.add(FxEffect(ctx, c.id, e.id, e.defId, false))
-                effects.add(ClipEffect(ctx, c.id, MODE_TEXTURE, if (isMain) c.transitionIn?.id ?: "" else "", outId, onTop, onTop, isMain))
+                effects.add(ClipEffect(ctx, c.id, MODE_TEXTURE, if (trans) c.transitionIn?.id ?: "" else "", outId, onTop, onTop, isMain, trans))
                 val m = c.media
                 if (c.kind == ClipKind.VIDEO && m != null) {
                     val reversed = if (c.reversed) o.reversedPath(c) else null
@@ -198,7 +198,20 @@ object CompositionBuilder {
             // De arriba abajo: la secuencia anterior se dibuja encima de la siguiente.
             for (t in structure.tracks) {
                 if (t.hidden) continue
-                if (t.type == TrackType.OVERLAY) {
+                if (t.type == TrackType.OVERLAY && t.clips.any { it.transitionIn != null }) {
+                    // Superposición con transiciones (copia de la principal): carriles A/B como en la principal.
+                    val a = ArrayList<Pair<Clip, EditedMediaItem>>()
+                    val bLane = ArrayList<Pair<Clip, EditedMediaItem>>()
+                    var laneIdx = 0
+                    for ((i, c) in t.clips.withIndex()) {
+                        if (c.transitionIn != null) laneIdx = 1 - laneIdx
+                        val outId = t.clips.getOrNull(i + 1)?.transitionIn?.id ?: ""
+                        val item = visualItem(c, false, laneIdx == 0, outId, trans = true)
+                        if (laneIdx == 0) a.add(c to item) else bLane.add(c to item)
+                    }
+                    lane(a)?.let { sequences.add(it) }
+                    lane(bLane)?.let { sequences.add(it) }
+                } else if (t.type == TrackType.OVERLAY) {
                     lane(t.clips.map { it to visualItem(it, false, true, "") })?.let { sequences.add(it) }
                 } else if (t.type == TrackType.MAIN) {
                     // Las transiciones solapan clips: cada clip con transición cambia de carril (A/B).

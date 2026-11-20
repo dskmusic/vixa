@@ -1533,4 +1533,18 @@
     <string name="github_project_hint">Código fuente, avisos de fallos y novedades</string>
     <string name="web_project">Web oficial</string>
     <string name="web_project_hint">Última versión, funciones y novedades</string>
+    <string name="move_to_start">Mover al inicio</string>
+    <string name="move_to_end">Mover al final</string>
+    <string name="move_before_prev">Colocar antes del anterior</string>
+    <string name="move_after_next">Colocar después del siguiente</string>
+    <string name="split_here">Dividir aquí</string>
+    <string name="remove_transition">Quitar transición</string>
+    <string name="apply_transition_all">Aplicar transición a todos</string>
+    <string name="track_up">Subir pista</string>
+    <string name="track_down">Bajar pista</string>
+    <string name="duplicate_track">Duplicar pista</string>
+    <string name="track_options">Opciones de pista</string>
+    <string name="vixa_share_hint">Con medios, los vídeos, fotos y sonidos viajan dentro del archivo y el proyecto se abre en cualquier dispositivo. «Solo el proyecto» guarda solo la edición: en otro móvil faltarán los medios.</string>
+    <string name="export_phase_finishing">Rematando el archivo para que se vea en teles y otros dispositivos… puede tardar un poco, no se ha colgado.</string>
+    <string name="export_phase_gif">Creando el GIF… puede tardar un poco, no se ha colgado.</string>
 </resources>

@@ -1534,4 +1534,18 @@
     <string name="github_project_hint">Source code, issues and updates</string>
     <string name="web_project">Official website</string>
     <string name="web_project_hint">Latest version, features and news</string>
+    <string name="move_to_start">Move to start</string>
+    <string name="move_to_end">Move to end</string>
+    <string name="move_before_prev">Move before previous</string>
+    <string name="move_after_next">Move after next</string>
+    <string name="split_here">Split here</string>
+    <string name="remove_transition">Remove transition</string>
+    <string name="apply_transition_all">Apply transition to all</string>
+    <string name="track_up">Move track up</string>
+    <string name="track_down">Move track down</string>
+    <string name="duplicate_track">Duplicate track</string>
+    <string name="track_options">Track options</string>
+    <string name="vixa_share_hint">With media, the videos, photos and sounds travel inside the file and the project opens on any device. \"Project only\" keeps just the edit: on another phone the media will be missing.</string>
+    <string name="export_phase_finishing">Finishing the file so it plays on TVs and other devices… this can take a moment, it hasn\'t frozen.</string>
+    <string name="export_phase_gif">Creating the GIF… this can take a moment, it hasn\'t frozen.</string>
 </resources>

@@ -174,13 +174,37 @@ private fun layoutMain(clips: List<Clip>): List<Clip> {
     return out
 }
 
+/**
+ * Superposición con transiciones (p. ej. una copia de la principal): un clip con transición se solapa con el anterior y
+ * la transición dura exactamente ese solape. Sin solape suficiente la transición no puede existir y se quita.
+ */
+private fun layoutOverlay(clips: List<Clip>): List<Clip> {
+    val out = ArrayList<Clip>(clips.size)
+    for (raw in clips) {
+        var c = raw
+        val prev = out.lastOrNull()
+        val ov = if (prev == null) 0L else prev.endUs - c.startUs
+        val tr = c.transitionIn
+        if (tr != null) {
+            val prevFree = if (prev == null) 0L else prev.durationUs - (prev.transitionIn?.durationUs ?: 0L)
+            c = if (ov < MIN_TRANSITION_US || ov > min(prevFree, c.durationUs)) c.copy(transitionIn = null)
+            else if (ov != tr.durationUs) c.copy(transitionIn = tr.copy(durationUs = ov)) else c
+        }
+        // Sin transición no puede haber solape (p. ej. al quitarla): el clip pasa a empezar donde acaba el anterior.
+        if (c.transitionIn == null && prev != null && c.startUs < prev.endUs) c = c.copy(startUs = prev.endUs)
+        out.add(c)
+    }
+    return out
+}
+
 fun Project.normalized(): Project {
     var ts = tracks
     if (ts.none { it.type == TrackType.MAIN }) ts = ts + Track(type = TrackType.MAIN)
     ts = ts.map { t ->
         val fixed = t.clips.map { it.fixed() }
         if (t.type == TrackType.MAIN) t.copy(clips = layoutMain(fixed))
-        else t.copy(clips = fixed.sortedBy { it.startUs })
+        else if (t.type == TrackType.OVERLAY) t.copy(clips = layoutOverlay(fixed.sortedBy { it.startUs }))
+        else t.copy(clips = fixed.sortedBy { it.startUs }.map { if (it.transitionIn != null) it.copy(transitionIn = null) else it })
     }
     return copy(tracks = ts)
 }
@@ -207,6 +231,31 @@ fun TrackType.accepts(kind: ClipKind): Boolean = when (this) {
 
 fun Track.isFree(startUs: Long, endUs: Long, excludeId: String = ""): Boolean =
     clips.none { it.id != excludeId && it.startUs < endUs && startUs < it.endUs }
+
+/**
+ * Dos clips de audio de la misma pista pueden solaparse (crossfade automático) hasta la mitad del más corto;
+ * el resto de pistas libres no admiten solapes.
+ */
+fun crossfadeOk(aStart: Long, aEnd: Long, bStart: Long, bEnd: Long): Boolean {
+    val ov = min(aEnd, bEnd) - max(aStart, bStart)
+    return ov <= 0 || ov <= min(aEnd - aStart, bEnd - bStart) / 2
+}
+
+/**
+ * ¿Cabe un clip en [startUs, endUs)? En audio se admite el solape de crossfade; en superposición, el solape de una
+ * transición (el clip que empieza después lleva [Clip.transitionIn]). [moving] es el clip que se coloca.
+ */
+fun Track.fits(startUs: Long, endUs: Long, excludeId: String = "", moving: Clip? = null): Boolean = when (type) {
+    TrackType.AUDIO -> clips.all { it.id == excludeId || crossfadeOk(startUs, endUs, it.startUs, it.endUs) }
+    TrackType.OVERLAY -> clips.all { o ->
+        if (o.id == excludeId) return@all true
+        val ov = min(endUs, o.endUs) - max(startUs, o.startUs)
+        if (ov <= 0) return@all true
+        val laterHasTr = if (startUs >= o.startUs) moving?.transitionIn != null else o.transitionIn != null
+        laterHasTr && crossfadeOk(startUs, endUs, o.startUs, o.endUs)
+    }
+    else -> isFree(startUs, endUs, excludeId)
+}
 
 private fun Project.mapTracks(f: (Track) -> Track): Project = copy(tracks = tracks.map(f))
 
@@ -243,15 +292,45 @@ fun Project.removeTrack(id: String): Project {
     return copy(tracks = tracks.filter { it.id != id }).normalized()
 }
 
+/**
+ * Sube ([delta] < 0) o baja una pista con todo su contenido (incluida la principal). El orden es el de las capas:
+ * la de más arriba se ve encima, así que una superposición bajo la principal queda tapada por ella.
+ */
 fun Project.moveTrack(id: String, delta: Int): Project {
     val i = tracks.indexOfFirst { it.id == id }
     if (i < 0) return this
-    val j = (i + delta).coerceIn(0, tracks.size - 1)
-    if (i == j) return this
+    val j = i + delta
+    if (j < 0 || j >= tracks.size) return this
     val list = tracks.toMutableList()
     val t = list.removeAt(i)
     list.add(j, t)
     return copy(tracks = list)
+}
+
+fun Project.canMoveTrack(id: String, delta: Int): Boolean = moveTrack(id, delta) !== this
+
+/**
+ * Duplica una pista con todo su contenido justo debajo de ella. Los clips copiados llevan ids nuevos.
+ * La copia de la principal sale como superposición (encima de la principal) en las mismas posiciones.
+ */
+fun Project.duplicateTrack(id: String): Project {
+    val i = tracks.indexOfFirst { it.id == id }
+    if (i < 0) return this
+    val t = tracks[i]
+    val isMain = t.type == TrackType.MAIN
+    val groups = HashMap<String, String>()
+    // El hueco inicial de la principal no es contenido: no se copia.
+    val clips = t.clips.filter { !(isMain && it.gap) }.map { c ->
+        c.copy(
+            id = newId(),
+            groupId = if (c.groupId.isEmpty()) "" else groups.getOrPut(c.groupId) { newId() },
+        )
+    }
+    // La copia es idéntica: mismas posiciones y mismas transiciones (las superposiciones también las admiten).
+    val copyTrack = t.copy(id = newId(), type = if (isMain) TrackType.OVERLAY else t.type, clips = clips)
+    val list = tracks.toMutableList()
+    list.add(if (isMain) i else i + 1, copyTrack)
+    return copy(tracks = list).normalized()
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -275,6 +354,13 @@ fun Project.insertMain(clips: List<Clip>, index: Int = -1): Project {
 fun Project.mainIndexAt(timeUs: Long): Int {
     val clips = mainTrack.clips
     for ((i, c) in clips.withIndex()) if (timeUs < c.startUs + c.durationUs / 2) return i
+    return clips.size
+}
+
+/** Índice de inserción en la principal justo después del clip que hay bajo [timeUs] (al final si no hay ninguno). */
+fun Project.mainIndexAfter(timeUs: Long): Int {
+    val clips = mainTrack.clips
+    for ((i, c) in clips.withIndex()) if (timeUs < c.endUs) return i + 1
     return clips.size
 }
 
@@ -409,8 +495,12 @@ fun Project.trimClip(id: String, start: Boolean, deltaUs: Long): Project {
     val c = clip(id) ?: return this
     val isMain = t.type == TrackType.MAIN
     val i = t.clips.indexOfFirst { it.id == id }
-    val prevEnd = if (isMain || i <= 0) 0L else t.clips[i - 1].endUs
-    val nextStart = if (isMain || i >= t.clips.size - 1) Long.MAX_VALUE else t.clips[i + 1].startUs
+    // En audio (crossfade) y en superposición con transición el vecino puede solaparse: el límite es su punto medio.
+    val audioTrack = t.type == TrackType.AUDIO
+    val ovPrev = audioTrack || (t.type == TrackType.OVERLAY && c.transitionIn != null)
+    val ovNext = audioTrack || (t.type == TrackType.OVERLAY && t.clips.getOrNull(i + 1)?.transitionIn != null)
+    val prevEnd = if (isMain || i <= 0) 0L else t.clips[i - 1].let { if (ovPrev) it.startUs + it.durationUs / 2 else it.endUs }
+    val nextStart = if (isMain || i >= t.clips.size - 1) Long.MAX_VALUE else t.clips[i + 1].let { if (ovNext) it.startUs + it.durationUs / 2 else it.startUs }
     var d = deltaUs
     val avgSpeed = if (c.durationUs > 0 && c.hasTimedMedia) c.srcSpanUs.toDouble() / c.durationUs.toDouble() else 1.0
     val nc: Clip
@@ -447,7 +537,7 @@ fun Project.moveClip(id: String, trackId: String, startUs: Long): Project {
     if (from.type == TrackType.MAIN || to.type == TrackType.MAIN) return this
     if (!to.type.accepts(c.kind) || to.locked) return this
     val s = startUs.coerceAtLeast(0).snapMs()
-    if (!to.isFree(s, s + c.durationUs, excludeId = id)) return this
+    if (!to.fits(s, s + c.durationUs, excludeId = id, moving = c)) return this
     val moved = c.copy(startUs = s)
     return mapTracks { t ->
         when {
@@ -497,7 +587,12 @@ fun Project.shiftClips(ids: Collection<String>, deltaUs: Long): Project {
     for (t in candidate.tracks) {
         if (t.type == TrackType.MAIN) continue
         val sorted = t.clips.sortedBy { it.startUs }
-        for (k in 1 until sorted.size) if (sorted[k].startUs < sorted[k - 1].endUs) return this
+        for (k in 1 until sorted.size) {
+            val a = sorted[k - 1]
+            val b = sorted[k]
+            val allowed = t.type == TrackType.AUDIO || (t.type == TrackType.OVERLAY && b.transitionIn != null)
+            if (b.startUs < a.endUs && (!allowed || !crossfadeOk(a.startUs, a.endUs, b.startUs, b.endUs))) return this
+        }
     }
     return candidate.normalized()
 }
@@ -508,12 +603,42 @@ fun Project.reorderMain(id: String, newIndex: Int): Project = mapTracks { t ->
         val i = t.clips.indexOfFirst { it.id == id }
         if (i < 0) t else {
             val list = t.clips.toMutableList()
-            val c = list.removeAt(i).copy(transitionIn = null)
+            // La transición viaja con el clip (solo se pierde si queda el primero, donde no puede haberla).
+            val c = list.removeAt(i)
             list.add(newIndex.coerceIn(0, list.size), c)
             t.copy(clips = list)
         }
     }
 }.normalized()
+
+/** Lleva un clip de pista libre al principio (0) o tras el último clip de su pista, si hay hueco. */
+fun Project.moveFreeToEdge(id: String, toEnd: Boolean): Project {
+    val c = clip(id) ?: return this
+    val t = trackOf(id) ?: return this
+    if (t.type == TrackType.MAIN) return this
+    val s = if (toEnd) t.clips.filter { it.id != id }.maxOfOrNull { it.endUs } ?: 0L else 0L
+    return moveClip(id, t.id, s)
+}
+
+/** Intercambia un clip de pista libre con el anterior ([delta] = -1) o el siguiente (+1) de su pista. */
+fun Project.swapFree(id: String, delta: Int): Project {
+    val t = trackOf(id) ?: return this
+    if (t.type == TrackType.MAIN) return this
+    val sorted = t.clips.sortedBy { it.startUs }
+    val i = sorted.indexOfFirst { it.id == id }
+    val j = i + delta
+    if (i < 0 || j < 0 || j >= sorted.size) return this
+    val a = sorted[min(i, j)]
+    val b = sorted[max(i, j)]
+    // b pasa a empezar donde empezaba a, y a justo después respetando el hueco que había entre ambos.
+    val gapAB = b.startUs - a.endUs
+    val nb = b.copy(startUs = a.startUs)
+    val na = a.copy(startUs = nb.endUs + gapAB)
+    val list = t.clips.map { when (it.id) { a.id -> na; b.id -> nb; else -> it } }
+    val sortedNew = list.sortedBy { it.startUs }
+    for (k in 1 until sortedNew.size) if (sortedNew[k].startUs < sortedNew[k - 1].endUs) return this
+    return updateTrack(t.id) { it.copy(clips = list) }
+}
 
 /** Mueve un clip entre la pista principal y una de superposición. */
 fun Project.toggleMainOverlay(id: String): Project {

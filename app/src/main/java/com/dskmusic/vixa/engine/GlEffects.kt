@@ -143,9 +143,11 @@ class ClipEffect(
     private val inOnTop: Boolean = true,
     private val outOnTop: Boolean = false,
     private val isMain: Boolean = false,
+    // Transiciones entre clips de la misma pista (principal, o superposición con transiciones).
+    private val transitions: Boolean = isMain,
 ) : GlEffect {
     override fun toGlShaderProgram(context: Context, useHdr: Boolean): GlShaderProgram =
-        ClipProgram(ctx, clipId, mode, transInId, transOutId, inOnTop, outOnTop, isMain)
+        ClipProgram(ctx, clipId, mode, transInId, transOutId, inOnTop, outOnTop, isMain, transitions)
 }
 
 private fun colorTo(c: Int, out: FloatArray, alpha: Float = -1f) {
@@ -164,6 +166,7 @@ private class ClipProgram(
     private val inOnTop: Boolean,
     private val outOnTop: Boolean,
     private val isMain: Boolean,
+    private val transitions: Boolean,
 ) : BaseGlShaderProgram(false, 1) {
 
     private val program: GlProgram
@@ -467,12 +470,12 @@ private class ClipProgram(
                 set("uFill", f4(21, 1f, sy, 0f, (1f - sy) / 2f))
             }
 
-            // Transiciones (solo pista principal).
+            // Transiciones (pista principal y superposiciones con transiciones).
             var inOn = 0f
             var inP = 0f
             var outOn = 0f
             var outP = 0f
-            if (isMain) {
+            if (transitions) {
                 val ti = c.transitionIn
                 if (ti != null && ti.durationUs > 0 && t < c.startUs + ti.durationUs) {
                     inOn = 1f
