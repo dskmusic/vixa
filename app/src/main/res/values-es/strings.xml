@@ -1613,4 +1613,12 @@
     <string name="qe_trim_hint">Pellizca con dos dedos para ampliar la tira y elegir con precisión. Con zoom, arrastra con un dedo para desplazarte por ella; sin zoom, arrastrar mueve toda la selección. Toca el ×N para volver al 100 %.</string>
     <string name="qe_ratio_flip_hint">Pulsa de nuevo un preset para girarlo (3:4 ↔ 4:3).</string>
     <string name="qe_gif_preview">Vista GIF</string>
+    <string name="qe_whatsapp">WhatsApp (60 s)</string>
+    <string name="qe_wa_parts">Se exportará en %1$d partes: %2$s.</string>
+    <string name="wa_title">WhatsApp: partes de hasta 60 s</string>
+    <string name="wa_part">Parte %1$d de %2$d</string>
+    <string name="wa_done">Listo: %1$d partes, por orden, en tu carpeta de exportación.</string>
+    <string name="wa_share">Compartir en WhatsApp</string>
+    <string name="wa_hint">Las partes se llaman _1deN, _2deN… para que queden en orden. Si WhatsApp las desordena, elígelas una a una en ese orden.</string>
+    <string name="split_title">Exportando en partes de hasta %1$d s</string>
 </resources>

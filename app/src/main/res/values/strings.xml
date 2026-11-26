@@ -1614,4 +1614,12 @@
     <string name="qe_trim_hint">Pinch with two fingers to zoom the strip and choose precisely. With zoom, drag with one finger to scroll along it; without zoom, dragging moves the whole selection. Tap the ×N badge to go back to 100%.</string>
     <string name="qe_ratio_flip_hint">Tap a preset again to rotate it (3:4 ↔ 4:3).</string>
     <string name="qe_gif_preview">GIF preview</string>
+    <string name="qe_whatsapp">WhatsApp (60 s)</string>
+    <string name="qe_wa_parts">It will be exported in %1$d parts: %2$s.</string>
+    <string name="wa_title">WhatsApp: parts of up to 60 s</string>
+    <string name="wa_part">Part %1$d of %2$d</string>
+    <string name="wa_done">Done: %1$d parts, in order, in your export folder.</string>
+    <string name="wa_share">Share on WhatsApp</string>
+    <string name="wa_hint">The parts are named _1deN, _2deN… so they stay in order. If WhatsApp shuffles them, pick them one by one in that order.</string>
+    <string name="split_title">Exporting in parts of up to %1$d s</string>
 </resources>

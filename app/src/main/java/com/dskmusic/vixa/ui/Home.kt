@@ -158,6 +158,8 @@ fun HomeScreen(
     var quickTool by remember { mutableStateOf<QuickTool?>(null) }
     // GIF y Recortar: primero la pantalla de edición (tiradores, encuadre); al confirmar sigue el diálogo de exportación.
     var quickEdited by remember { mutableStateOf(false) }
+    // Recortar en partes de 60 s para WhatsApp: proyecto ya recortado que se exporta troceado.
+    var batch by remember { mutableStateOf<Project?>(null) }
     var aiTool by remember { mutableStateOf<Pair<String, String>?>(null) }
     var aiResult by remember { mutableStateOf<AiQuickResult?>(null) }
     CollectAiMessages(container) { error = it }
@@ -465,12 +467,16 @@ fun HomeScreen(
             }
         }
     }
+    batch?.let { b -> BatchExportDialog(container, b, ExportSettings.WHATSAPP) { batch = null } }
     val qp = quickProject
     val qt = quickTool
     if (qp != null && qt != null && (qt.id == "gif" || qt.id == "trim") && !quickEdited && quickMediaOf(qp) != null) {
         // key(): cada vídeo abre un editor nuevo, sin arrastrar el tramo, el zoom ni los ajustes de la vez anterior.
         androidx.compose.runtime.key(qp.id) {
-            QuickEditorDialog(container, qp, gif = qt.id == "gif", onDismiss = { quickProject = null; quickTool = null; quick = null; quickEdited = false }) { p -> quickProject = p; quickEdited = true }
+            QuickEditorDialog(
+                container, qp, gif = qt.id == "gif", onDismiss = { quickProject = null; quickTool = null; quick = null; quickEdited = false },
+                onWhatsapp = { p -> batch = p; quickProject = null; quickTool = null; quick = null; quickEdited = false },
+            ) { p -> quickProject = p; quickEdited = true }
         }
     } else if (qp != null && qt != null) {
         val short = minOf(qp.width, qp.height)

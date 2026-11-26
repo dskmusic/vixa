@@ -84,6 +84,7 @@ import com.dskmusic.vixa.model.ExportSettings
 import com.dskmusic.vixa.model.Project
 import com.dskmusic.vixa.model.Quality
 import com.dskmusic.vixa.model.VideoCodec
+import com.dskmusic.vixa.model.slice
 import com.dskmusic.vixa.ui.picker.FileBrowserDialog
 import java.io.File
 import java.util.Locale
@@ -137,6 +138,8 @@ fun ExportDialog(
     var folder by remember { mutableStateOf(false) }
     var naming by remember { mutableStateOf(false) }
     var rangeOn by remember { mutableStateOf(startRange) }
+    // Perfil con partes (WhatsApp): el proyecto (ya recortado al rango) y los ajustes, para exportar por trozos.
+    var batch by remember { mutableStateOf<Pair<Project, ExportSettings>?>(null) }
     // El bucle de vista previa solo se reconstruye al soltar un deslizador: lo que se ve es lo que tendrá el archivo.
     var committed by remember { mutableStateOf(s.rangeStartUs to s.rangeEndUs) }
     // Modo Normal (Pro apagado): exportación sencilla (tipo y calidad en tres opciones). Pro (y las herramientas rápidas) enseñan todo.
@@ -158,6 +161,7 @@ fun ExportDialog(
         }
         if (!rangeOn) return
         val max = durUs / 1_000_000f
+        val qm = remember(project) { quickMediaOf(project) }
         val src = previewSource(project)
         if (src != null && committed.second > committed.first) {
             val clip = project.allClips().first()
@@ -165,8 +169,15 @@ fun ExportDialog(
             FramePreview(src.first, src.second, committed.first, committed.second, if (s.kind == ExportKind.GIF) s.gifSpeed else 1f, aspect, s.kind == ExportKind.GIF && s.boomerang, if (s.kind == ExportKind.GIF) s.gifFps else 15)
             Text(stringResource(R.string.range_loop_hint, (s.rangeEndUs - s.rangeStartUs) / 1_000_000f), Modifier.padding(horizontal = 16.dp, vertical = 2.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        if (qm != null) {
+            // Un solo vídeo: tira de fotogramas con tiradores, zoom con dos dedos y ajuste fino (igual que en Recortar y GIF).
+            RangeTrimEditor(qm, s.rangeStartUs, s.rangeEndUs) { a, b -> s = s.copy(rangeStartUs = a, rangeEndUs = b) }
+            // La vista previa en bucle se rehace 0,45 s después del último cambio.
+            androidx.compose.runtime.LaunchedEffect(s.rangeStartUs, s.rangeEndUs) { kotlinx.coroutines.delay(450); committed = s.rangeStartUs to s.rangeEndUs }
+        } else {
         PreciseSlider(stringResource(R.string.range_start), s.rangeStartUs / 1_000_000f, { v -> s = s.copy(rangeStartUs = (v * 1_000_000f).toLong().coerceAtMost(s.rangeEndUs - 200_000L)) }, range = 0f..max, default = 0f, onFinished = { committed = s.rangeStartUs to s.rangeEndUs }, format = { formatTime((it * 1_000_000f).toLong()) }, inputScale = 1f)
         PreciseSlider(stringResource(R.string.range_end), s.rangeEndUs / 1_000_000f, { v -> s = s.copy(rangeEndUs = (v * 1_000_000f).toLong().coerceAtLeast(s.rangeStartUs + 200_000L)) }, range = 0f..max, default = max, onFinished = { committed = s.rangeStartUs to s.rangeEndUs }, format = { formatTime((it * 1_000_000f).toLong()) }, inputScale = 1f)
+        }
         FlowRow(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             AssistChip({ s = s.copy(rangeStartUs = positionUs.coerceAtMost(s.rangeEndUs - 200_000L).coerceAtLeast(0)); committed = s.rangeStartUs to s.rangeEndUs }, { Text(stringResource(R.string.start_at_playhead)) })
             AssistChip({ s = s.copy(rangeEndUs = positionUs.coerceAtLeast(s.rangeStartUs + 200_000L)); committed = s.rangeStartUs to s.rangeEndUs }, { Text(stringResource(R.string.end_at_playhead)) })
@@ -229,7 +240,7 @@ fun ExportDialog(
                 } else {
                     Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
                         if (simpleExport) {
-                            ChipRow(listOf(ExportKind.VIDEO, ExportKind.GIF, ExportKind.FRAME_JPG), s.kind, { stringResource(when (it) { ExportKind.VIDEO -> R.string.kind_video; ExportKind.GIF -> R.string.kind_gif; else -> R.string.kind_jpg }) }) { k -> s = s.copy(kind = k) }
+                            KindRow(listOf(ExportKind.VIDEO, ExportKind.GIF, ExportKind.FRAME_JPG), s) { s = it }
                             if (s.kind == ExportKind.VIDEO) {
                                 SectionTitle(stringResource(R.string.quality))
                                 Column(Modifier.padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -255,7 +266,7 @@ fun ExportDialog(
                                 placeholder = { Text(project.name.ifBlank { "Vixa" }) }, suffix = { Text("." + s.extension) })
                         } else {
                         if (allowedKinds.size > 1) {
-                            ChipRow(allowedKinds, s.kind, { stringResource(when (it) { ExportKind.VIDEO -> R.string.kind_video; ExportKind.AUDIO -> R.string.kind_audio; ExportKind.GIF -> R.string.kind_gif; ExportKind.FRAME_PNG -> R.string.kind_png; ExportKind.FRAME_JPG -> R.string.kind_jpg }) }) { k -> s = s.copy(kind = k) }
+                            KindRow(allowedKinds, s) { s = it }
                         }
                         // Recortar: el tramo es lo primero que hay que ajustar, así que va arriba del todo.
                         if (initialRange && s.kind == ExportKind.VIDEO) rangeBlock()
@@ -263,9 +274,16 @@ fun ExportDialog(
                             SectionTitle(stringResource(R.string.presets))
                             Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 for (p in ExportSettings.SOCIAL_PRESETS + app.exportPresets) {
-                                    AssistChip({ s = p.copy(outDir = s.outDir, frameUs = s.frameUs, codec = if (Exporter.isCodecSupported(p.codec)) p.codec else VideoCodec.H264) }, { Text(p.presetName) })
+                                    AssistChip({ s = p.copy(outDir = s.outDir, frameUs = s.frameUs, rangeStartUs = s.rangeStartUs, rangeEndUs = s.rangeEndUs, codec = if (Exporter.isCodecSupported(p.codec)) p.codec else VideoCodec.H264) }, { Text(p.presetName) })
                                 }
                                 AssistChip({ naming = true }, { Text("+ " + stringResource(R.string.save_preset)) })
+                            }
+                            if (s.splitSeconds > 0) {
+                                val wp = whatsappParts(if (rangeOn && s.rangeEndUs > s.rangeStartUs) s.rangeEndUs - s.rangeStartUs else durUs, s.splitSeconds * 1_000_000L)
+                                Text(
+                                    stringResource(R.string.qe_wa_parts, wp.size, wp.joinToString(" + ") { String.format(java.util.Locale.US, "%.0f s", (it.second - it.first) / 1_000_000.0) }),
+                                    Modifier.padding(horizontal = 16.dp, vertical = 4.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary,
+                                )
                             }
                             SectionTitle(stringResource(R.string.resolution))
                             Row(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -330,14 +348,17 @@ fun ExportDialog(
                                 color = if (free in 0 until est) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Button({
-                            container.settings.update { it.copy(export = s.copy(rangeStartUs = -1, rangeEndUs = -1, fileName = "", outDir = "", aspectW = 0, aspectH = 0, presetName = ""), exportDir = s.outDir.ifEmpty { it.exportDir }) }
-                            container.exporter.start(project, s.copy(outDir = outDir))
+                            container.settings.update { it.copy(export = s.copy(rangeStartUs = -1, rangeEndUs = -1, fileName = "", outDir = "", aspectW = 0, aspectH = 0, presetName = "", splitSeconds = 0), exportDir = s.outDir.ifEmpty { it.exportDir }) }
+                            if (s.splitSeconds > 0 && s.kind == ExportKind.VIDEO) {
+                                batch = (if (rangeOn && s.rangeEndUs > s.rangeStartUs) project.slice(s.rangeStartUs, s.rangeEndUs) else project) to s.copy(outDir = outDir, rangeStartUs = -1, rangeEndUs = -1)
+                            } else container.exporter.start(project, s.copy(outDir = outDir))
                         }, enabled = durUs > 0) { Text(stringResource(R.string.export)) }
                     }
                 }
             }
         }
     }
+    batch?.let { (bp, bs) -> BatchExportDialog(container, bp, bs) { batch = null } }
     if (folder) FileBrowserDialog(stringResource(R.string.destination), folderMode = true, startDir = outDir, onDismiss = { folder = false }) { it.firstOrNull()?.let { d -> s = s.copy(outDir = d) } }
     if (naming) TextInputDialog(stringResource(R.string.save_preset), s.shortSide.toString() + "p " + s.fps, { naming = false }) { name ->
         container.settings.update { it.copy(exportPresets = it.exportPresets + s.copy(presetName = name, rangeStartUs = -1, rangeEndUs = -1, fileName = "", outDir = "", frameUs = 0)) }
@@ -439,5 +460,31 @@ fun SwitchRowSimple(label: String, checked: Boolean, onChange: (Boolean) -> Unit
     Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
         Switch(checked, onChange)
+    }
+}
+
+/**
+ * Tipo de exportación: Vídeo, Audio, GIF… y, justo después de Vídeo y Audio, el perfil rápido "WhatsApp" (vídeo en partes de 60 s
+ * como mucho, una tras otra y por orden). Elegirlo aplica el perfil; elegir otro tipo quita el troceado.
+ */
+@Composable
+private fun KindRow(kinds: List<ExportKind>, s: ExportSettings, onChange: (ExportSettings) -> Unit) {
+    val ss = rememberScrollState()
+    // El perfil va tras Audio si hay audio; si no, tras Vídeo.
+    val after = if (ExportKind.AUDIO in kinds) ExportKind.AUDIO else ExportKind.VIDEO
+    Row(Modifier.horizontalScroll(ss).padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        for (k in kinds) {
+            FilterChip(
+                s.kind == k && !(k == ExportKind.VIDEO && s.splitSeconds > 0), { onChange(s.copy(kind = k, splitSeconds = 0)) },
+                { Text(stringResource(when (k) { ExportKind.VIDEO -> R.string.kind_video; ExportKind.AUDIO -> R.string.kind_audio; ExportKind.GIF -> R.string.kind_gif; ExportKind.FRAME_PNG -> R.string.kind_png; ExportKind.FRAME_JPG -> R.string.kind_jpg })) },
+            )
+            if (k == after && ExportKind.VIDEO in kinds) {
+                FilterChip(
+                    s.kind == ExportKind.VIDEO && s.splitSeconds > 0,
+                    { onChange(ExportSettings.WHATSAPP.copy(outDir = s.outDir, frameUs = s.frameUs, rangeStartUs = s.rangeStartUs, rangeEndUs = s.rangeEndUs, fileName = s.fileName)) },
+                    { Text("WhatsApp") },
+                )
+            }
+        }
     }
 }

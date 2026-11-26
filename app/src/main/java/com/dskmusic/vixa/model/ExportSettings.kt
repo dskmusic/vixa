@@ -45,6 +45,8 @@ data class ExportSettings(
     /** false = el GIF se reproduce una sola vez. */
     val gifLoop: Boolean = true,
     val gifSpeed: Float = 1f,
+    /** > 0: el vídeo se exporta en partes de como mucho esos segundos (estados de WhatsApp = 60), una tras otra y por orden. */
+    val splitSeconds: Int = 0,
     /** Intentar copiar sin recodificar cuando el proyecto lo permita. */
     val passthrough: Boolean = true,
     /** Guardar también la portada elegida como JPG junto al vídeo. */
@@ -94,6 +96,9 @@ data class ExportSettings(
         }
 
     companion object {
+        /** Perfil rápido para estados de WhatsApp: 720p, H.264, calidad media y partes de 60 s como mucho. */
+        val WHATSAPP = ExportSettings(presetName = "WhatsApp · 60 s", shortSide = 720, fps = 30, quality = Quality.MEDIUM, passthrough = false, splitSeconds = 60)
+
         val SOCIAL_PRESETS: List<ExportSettings> = listOf(
             ExportSettings(presetName = "9:16 · 1080p", shortSide = 1080, fps = 30, aspectW = 9, aspectH = 16),
             ExportSettings(presetName = "16:9 · 1080p", shortSide = 1080, fps = 30, aspectW = 16, aspectH = 9),

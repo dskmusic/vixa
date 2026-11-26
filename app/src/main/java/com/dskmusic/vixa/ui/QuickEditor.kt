@@ -93,8 +93,29 @@ class QuickMedia(val clipId: String, val path: String, val offsetUs: Long, val d
 fun quickMediaOf(p: Project): QuickMedia? {
     val c = p.allClips().singleOrNull() ?: return null
     val m = c.media ?: return null
-    if (c.kind != ClipKind.VIDEO || c.speed != 1f || c.speedCurve.isNotEmpty() || c.reversed || !File(m.path).exists() || m.width <= 0 || c.srcSpanUs < 500_000L) return null
+    if (c.startUs != 0L || c.kind != ClipKind.VIDEO || c.speed != 1f || c.speedCurve.isNotEmpty() || c.reversed || !File(m.path).exists() || m.width <= 0 || c.srcSpanUs < 500_000L) return null
     return QuickMedia(c.id, m.path, c.srcInUs, c.srcSpanUs, m.width, m.height, Math.round(m.fps).coerceIn(5, 60))
+}
+
+/**
+ * Selector de tramo para el diálogo de exportar (un solo vídeo): la tira con tiradores, zoom de dos dedos, arrastre de la selección
+ * y ajuste fino al fotograma, igual que en Recortar y GIF. [onRange] recibe el inicio y el fin (tiempo del proyecto).
+ */
+@Composable
+fun RangeTrimEditor(qm: QuickMedia, startUs: Long, endUs: Long, onRange: (Long, Long) -> Unit) {
+    val dur = qm.durUs
+    val frameUs = 1_000_000L / qm.fps
+    val minGap = max(frameUs * 2, 100_000L)
+    var winStart by remember(dur) { mutableLongStateOf(0L) }
+    var winEnd by remember(dur) { mutableLongStateOf(dur) }
+    val baseFilm = rememberFilmstrip(qm.path, qm.offsetUs, 0L, dur)
+    val detailFilm = rememberFilmstrip(qm.path, qm.offsetUs, winStart, winEnd, enabled = winEnd - winStart < dur)
+    Column(Modifier.fillMaxWidth()) {
+        TrimBar(baseFilm, detailFilm, winStart, winEnd, { a, b -> winStart = a; winEnd = b }, dur, startUs, endUs, -1L, minGap, onRange, {}, Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
+        Text(stringResource(R.string.qe_trim_hint), Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        FineAdjust(stringResource(R.string.qe_start), startUs, frameUs, { onRange(it.coerceIn(0L, endUs - minGap), endUs) })
+        FineAdjust(stringResource(R.string.qe_end), endUs, frameUs, { onRange(startUs, it.coerceIn(startUs + minGap, dur)) })
+    }
 }
 
 /** El proyecto con el tramo [startUs, endUs] y el encuadre aplicados (el lienzo toma la proporción del recorte). */
@@ -262,7 +283,7 @@ private fun QuickPlayer(path: String, offsetUs: Long, start: Long, end: Long, sp
  * recortado para que siga el diálogo de exportación normal.
  */
 @Composable
-fun QuickEditorDialog(container: AppContainer, project: Project, gif: Boolean, onDismiss: () -> Unit, onDone: (Project) -> Unit) {
+fun QuickEditorDialog(container: AppContainer, project: Project, gif: Boolean, onDismiss: () -> Unit, onWhatsapp: ((Project) -> Unit)? = null, onDone: (Project) -> Unit) {
     val qm = remember(project) { quickMediaOf(project) }
     if (qm == null) { onDismiss(); return }
     val context = LocalContext.current
@@ -281,6 +302,8 @@ fun QuickEditorDialog(container: AppContainer, project: Project, gif: Boolean, o
     var playing by remember { mutableStateOf(true) }
     var seekReq by remember { mutableStateOf(0L to 0) }
     var tab by remember { mutableIntStateOf(0) }
+    // Recortar: exportar en partes de 60 s como mucho (estados de WhatsApp), por orden.
+    var whatsapp by remember { mutableStateOf(false) }
     var crop by remember { mutableStateOf(CropRect()) }
     var ratioId by remember { mutableStateOf("free") }
     var boomerang by remember { mutableStateOf(saved.boomerang) }
@@ -394,7 +417,7 @@ fun QuickEditorDialog(container: AppContainer, project: Project, gif: Boolean, o
 
     fun confirm() {
         val p2 = quickApply(project, qm, start, end, crop)
-        if (!gif) { onDone(p2); return }
+        if (!gif) { if (whatsapp && onWhatsapp != null) onWhatsapp(p2) else onDone(p2); return }
         val short = min(p2.width, p2.height)
         val s = ExportSettings(
             kind = ExportKind.GIF, shortSide = listOf(480, 720, 1080, 1440, 2160).lastOrNull { it <= short } ?: 480, fps = p2.fps,
@@ -468,6 +491,13 @@ fun QuickEditorDialog(container: AppContainer, project: Project, gif: Boolean, o
                 }
                 TrimBar(baseFilm, detailFilm, winStart, winEnd, { a, b -> winStart = a; winEnd = b }, dur, start, end, pos, minGap, { s, e -> start = s; end = e }, { seek(it) }, Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
                 Text(stringResource(R.string.qe_trim_hint), Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (whatsapp) {
+                    val wp = whatsappParts(spanUs.coerceAtLeast(1L))
+                    Text(
+                        stringResource(R.string.qe_wa_parts, wp.size, wp.joinToString(" + ") { String.format(java.util.Locale.US, "%.0f s", (it.second - it.first) / 1_000_000.0) }),
+                        Modifier.padding(horizontal = 16.dp, vertical = 4.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary,
+                    )
+                }
                 FineAdjust(stringResource(R.string.qe_start), start, frameUs, { start = it.coerceIn(0L, end - minGap); seek(start) })
                 FineAdjust(stringResource(R.string.qe_end), end, frameUs, { end = it.coerceIn(start + minGap, dur); seek(end) })
             }
@@ -504,6 +534,7 @@ fun QuickEditorDialog(container: AppContainer, project: Project, gif: Boolean, o
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(tab == 0, { tab = 0 }, { Text(stringResource(R.string.qe_time)) })
             FilterChip(tab == 1, { tab = 1 }, { Text(stringResource(R.string.qe_frame)) })
+            if (!gif && onWhatsapp != null) FilterChip(whatsapp, { whatsapp = !whatsapp }, { Text(stringResource(R.string.qe_whatsapp)) })
             if (gif) {
                 FilterChip(tab == 2, { tab = 2 }, { Text(stringResource(R.string.qe_settings)) })
                 FilterChip(boomerang, { boomerang = !boomerang }, { Text(stringResource(R.string.gif_boomerang)) })
