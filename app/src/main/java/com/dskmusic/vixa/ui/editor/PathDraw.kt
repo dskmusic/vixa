@@ -140,6 +140,26 @@ private fun backdropFor(p: com.dskmusic.vixa.model.Project?, pos: Long): android
     return Thumbs.get(m, t)
 }
 
+/** Dibuja el elemento tal como se verá en el vídeo en el instante [localUs]: texto y pegatinas con el motor real; medios con su miniatura. */
+private fun drawPathElement(nc: android.graphics.Canvas, render: com.dskmusic.vixa.engine.OverlayRender, project: com.dskmusic.vixa.model.Project, el: Clip, localUs: Long, w: Int, h: Int, paint: android.graphics.Paint) {
+    when (el.kind) {
+        com.dskmusic.vixa.model.ClipKind.TEXT, com.dskmusic.vixa.model.ClipKind.STICKER -> render.drawClip(nc, project, el, localUs, w, h)
+        else -> {
+            val cx = (0.5f + el.prop("x", localUs)) * w
+            val cy = (0.5f + el.prop("y", localUs)) * h
+            val bw = w * 0.45f * el.prop("scale", localUs).coerceAtLeast(0.05f)
+            val bmp = el.media?.let { Thumbs.get(it, el.srcInUs + localUs) }
+            if (bmp != null && bmp.width > 0) {
+                val bh = bw * bmp.height / bmp.width
+                nc.drawBitmap(bmp, null, android.graphics.RectF(cx - bw / 2f, cy - bh / 2f, cx + bw / 2f, cy + bh / 2f), paint)
+            } else {
+                paint.color = el.fill?.colors?.firstOrNull() ?: 0xFFFF4FA3.toInt()
+                nc.drawRoundRect(android.graphics.RectF(cx - bw / 2f, cy - bw / 3f, cx + bw / 2f, cy + bw / 3f), 16f, 16f, paint)
+            }
+        }
+    }
+}
+
 /** Pantalla para dibujar con el dedo por dónde se mueve un elemento (pegatina, texto, capa de medios…) durante su duración. */
 @Composable
 fun DrawPathDialog(vm: EditorViewModel, clip: Clip, onDismiss: () -> Unit) {
@@ -151,12 +171,13 @@ fun DrawPathDialog(vm: EditorViewModel, clip: Clip, onDismiss: () -> Unit) {
     val tick = Thumbs.tick.collectAsState().value
     val shot = remember { try { vm.previewShot?.invoke()?.takeIf { !it.isRecycled && !it.isNearlyBlack() } } catch (e: Throwable) { null } }
     val backdrop = remember(tick) { (shot ?: backdropFor(project, pos))?.asImageBitmap() }
-    // Previsualización: un marcador (el emoji, si es uno) recorre el trazo en bucle, a la velocidad real del elemento (entre 1,2 y 5 s).
+    // Previsualización: el propio elemento (texto, pegatina, emoji, foto...) recorre el trazo en bucle, con sus animaciones y a la
+    // velocidad real del elemento (entre 1,2 y 5 s).
     var previewOn by remember { mutableStateOf(true) }
     val durMs = (clip.durationUs / 1000L).coerceIn(1200L, 5000L).toInt()
     val prog by rememberInfiniteTransition(label = "pathPreview").animateFloat(0f, 1f, infiniteRepeatable(tween(durMs, easing = LinearEasing), RepeatMode.Restart), label = "pathPreviewT")
-    val emoji = clip.sticker?.takeIf { it.type == com.dskmusic.vixa.model.StickerType.EMOJI }?.value
-    val markerPaint = remember { android.graphics.Paint().apply { isAntiAlias = true; textAlign = android.graphics.Paint.Align.CENTER } }
+    val render = remember { com.dskmusic.vixa.engine.OverlayRender() }
+    val elementPaint = remember { android.graphics.Paint().apply { isAntiAlias = true; isFilterBitmap = true } }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Column(Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -184,35 +205,30 @@ fun DrawPathDialog(vm: EditorViewModel, clip: Clip, onDismiss: () -> Unit) {
                             drawImage(img, IntOffset((bw - sw) / 2, (bh - sh) / 2), IntSize(sw, sh), IntOffset.Zero, IntSize(size.width.toInt(), size.height.toInt()))
                             drawRect(Color(0x33000000))
                         }
-                        if (previewOn && pts.size > 1) {
-                            val m = pointAlong(pts.toList(), prog)
-                            val cx = m.x * size.width
-                            val cy = m.y * size.height
-                            if (!emoji.isNullOrEmpty()) drawIntoCanvas { c ->
-                                markerPaint.textSize = 34.dp.toPx()
-                                c.nativeCanvas.drawText(emoji, cx, cy + 12.dp.toPx(), markerPaint)
-                            } else {
-                                drawCircle(Color.White, 13.dp.toPx(), Offset(cx, cy))
-                                drawCircle(Color(0xFFFF4FA3), 9.dp.toPx(), Offset(cx, cy))
-                            }
-                        }
                         if (pts.size > 1) {
                             val path = Path()
                             path.moveTo(pts[0].x * size.width, pts[0].y * size.height)
                             for (i in 1 until pts.size) path.lineTo(pts[i].x * size.width, pts[i].y * size.height)
                             drawPath(path, Color(0xFFFFD60A), style = Stroke(6.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
                         }
+                        if (previewOn && pts.size > 1 && project != null) {
+                            val kf = pathKeyframes(pts.toList(), clip.durationUs)
+                            if (kf != null) {
+                                val el = clip.copy(keyframes = clip.keyframes + mapOf("x" to kf.first, "y" to kf.second))
+                                drawIntoCanvas { c -> drawPathElement(c.nativeCanvas, render, project, el, (prog * clip.durationUs).toLong(), size.width.toInt(), size.height.toInt(), elementPaint) }
+                            }
+                        }
                     }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconButton({ previewOn = !previewOn }) { Icon(if (previewOn) Icons.Default.Pause else Icons.Default.PlayArrow, stringResource(R.string.play_pause)) }
-                    OutlinedButton({ pts.clear() }) { Text(stringResource(R.string.clear)) }
-                    OutlinedButton(onDismiss) { Text(stringResource(R.string.cancel)) }
+                    OutlinedButton({ pts.clear() }, Modifier.weight(1f), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)) { Text(stringResource(R.string.clear), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) }
+                    OutlinedButton(onDismiss, Modifier.weight(1f), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)) { Text(stringResource(R.string.cancel), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) }
                     Button({
                         val kf = pathKeyframes(pts.toList(), clip.durationUs)
                         if (kf != null) vm.updateClip(R.string.hist_animation, clip.id) { it.copy(keyframes = it.keyframes + mapOf("x" to kf.first, "y" to kf.second)) }
                         onDismiss()
-                    }) { Text(stringResource(R.string.stk_path_done)) }
+                    }, Modifier.weight(1.2f), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)) { Text(stringResource(R.string.stk_path_done), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) }
                 }
             }
         }

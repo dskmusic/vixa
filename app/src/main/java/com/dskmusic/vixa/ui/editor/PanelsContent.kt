@@ -172,11 +172,10 @@ fun TextPanel(vm: EditorViewModel, project: Project, c: Clip, pick: (PickRequest
             }
         }
     }
-    // Modo Fácil: botones grandes (Texto, Letra, Estilo, Animar, Camino). Pro: las pestañas de siempre.
-    val easy = easyMode(vm)
+    // Botones grandes (Texto, Letra, Estilo, Animar, Camino) en los dos modos.
     var drawingPath by remember { mutableStateOf(false) }
     val hasPath = !c.keyframes["x"].isNullOrEmpty() && !c.keyframes["y"].isNullOrEmpty()
-    if (easy) EasyBar(
+    EasyBar(
         listOf(
             EasyTab("0", Icons.Default.TextFields, R.string.text_content), EasyTab("1", Icons.Default.FontDownload, R.string.text_font),
             EasyTab("2", Icons.Default.Palette, R.string.text_style), EasyTab("3", Icons.Default.Animation, R.string.animation),
@@ -184,10 +183,6 @@ fun TextPanel(vm: EditorViewModel, project: Project, c: Clip, pick: (PickRequest
         ),
         tab.toString(),
     ) { k -> if (k == "path") drawingPath = true else tab = k.toInt() }
-    else Row(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        for ((i, r) in listOf(R.string.text_content, R.string.text_font, R.string.text_style, R.string.animation).withIndex()) FilterChip(tab == i, { tab = i }, { Text(stringResource(r)) })
-        AssistChip({ drawingPath = true }, { Text(stringResource(R.string.stk_draw_path)) })
-    }
     if (drawingPath) DrawPathDialog(vm, c) { drawingPath = false }
     when (tab) {
         0 -> {

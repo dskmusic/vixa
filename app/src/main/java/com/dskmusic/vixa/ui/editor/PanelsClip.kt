@@ -1,5 +1,7 @@
 package com.dskmusic.vixa.ui.editor
 
+import androidx.compose.material.icons.filled.AspectRatio
+import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.MoreHoriz
@@ -210,99 +212,75 @@ fun SpeedPanel(vm: EditorViewModel, c: Clip) {
 @Composable
 fun VolumePanel(vm: EditorViewModel, c: Clip) {
     val maxFade = (c.durationUs / 2_000_000f).coerceAtLeast(0.1f)
-    // Modo Fácil: Volumen / Fundidos / Más, uno a la vez.
-    if (easyMode(vm)) {
-        var sub by remember { mutableStateOf("vol") }
-        EasyBar(listOf(EasyTab("vol", Icons.AutoMirrored.Filled.VolumeUp, R.string.volume), EasyTab("fade", Icons.Default.GraphicEq, R.string.easy_fades), EasyTab("more", Icons.Default.MoreHoriz, R.string.more)), sub) { sub = it }
-        when (sub) {
-            "vol" -> {
-                PropSlider(vm, c, "volume", stringResource(R.string.volume), R.string.hist_volume, 0f..2f, 1f)
-                SwitchRow(stringResource(R.string.mute), c.muted) { on -> vm.updateClip(R.string.hist_volume, c.id) { it.copy(muted = on) } }
-            }
-            "fade" -> {
-                PreciseSlider(stringResource(R.string.fade_in), c.fadeInUs / 1_000_000f, { v -> vm.updateClip(R.string.hist_volume, c.id, live = true) { it.copy(fadeInUs = (v * 1_000_000f).toLong()) } },
-                    range = 0f..minOf(10f, maxFade), onFinished = { vm.commit() }, format = ::secs, inputScale = 1f)
-                PreciseSlider(stringResource(R.string.fade_out), c.fadeOutUs / 1_000_000f, { v -> vm.updateClip(R.string.hist_volume, c.id, live = true) { it.copy(fadeOutUs = (v * 1_000_000f).toLong()) } },
-                    range = 0f..minOf(10f, maxFade), onFinished = { vm.commit() }, format = ::secs, inputScale = 1f)
-            }
-            else -> if (c.kind == ClipKind.VIDEO && c.media?.hasAudio == true && !c.audioDetached) {
-                OutlinedButton({ vm.edit(R.string.hist_detach) { it.detachAudio(c.id) } }, Modifier.padding(horizontal = 16.dp)) { Text(stringResource(R.string.detach_audio)) }
-            } else Text("–", Modifier.padding(16.dp))
+    // Botones grandes (Volumen / Fundidos / Más), un bloque a la vez, en los dos modos.
+    var sub by remember { mutableStateOf("vol") }
+    EasyBar(listOf(EasyTab("vol", Icons.AutoMirrored.Filled.VolumeUp, R.string.volume), EasyTab("fade", Icons.Default.GraphicEq, R.string.easy_fades), EasyTab("more", Icons.Default.MoreHoriz, R.string.more)), sub) { sub = it }
+    when (sub) {
+        "vol" -> {
+            PropSlider(vm, c, "volume", stringResource(R.string.volume), R.string.hist_volume, 0f..2f, 1f)
+            SwitchRow(stringResource(R.string.mute), c.muted) { on -> vm.updateClip(R.string.hist_volume, c.id) { it.copy(muted = on) } }
         }
-        return
-    }
-    PropSlider(vm, c, "volume", stringResource(R.string.volume), R.string.hist_volume, 0f..2f, 1f)
-    PreciseSlider(stringResource(R.string.fade_in), c.fadeInUs / 1_000_000f, { v -> vm.updateClip(R.string.hist_volume, c.id, live = true) { it.copy(fadeInUs = (v * 1_000_000f).toLong()) } },
-        range = 0f..minOf(10f, maxFade), onFinished = { vm.commit() }, format = ::secs, inputScale = 1f)
-    PreciseSlider(stringResource(R.string.fade_out), c.fadeOutUs / 1_000_000f, { v -> vm.updateClip(R.string.hist_volume, c.id, live = true) { it.copy(fadeOutUs = (v * 1_000_000f).toLong()) } },
-        range = 0f..minOf(10f, maxFade), onFinished = { vm.commit() }, format = ::secs, inputScale = 1f)
-    SwitchRow(stringResource(R.string.mute), c.muted) { on -> vm.updateClip(R.string.hist_volume, c.id) { it.copy(muted = on) } }
-    if (c.kind == ClipKind.VIDEO && c.media?.hasAudio == true && !c.audioDetached) {
-        OutlinedButton({ vm.edit(R.string.hist_detach) { it.detachAudio(c.id) } }, Modifier.padding(horizontal = 16.dp)) { Text(stringResource(R.string.detach_audio)) }
+        "fade" -> {
+            PreciseSlider(stringResource(R.string.fade_in), c.fadeInUs / 1_000_000f, { v -> vm.updateClip(R.string.hist_volume, c.id, live = true) { it.copy(fadeInUs = (v * 1_000_000f).toLong()) } },
+                range = 0f..minOf(10f, maxFade), onFinished = { vm.commit() }, format = ::secs, inputScale = 1f)
+            PreciseSlider(stringResource(R.string.fade_out), c.fadeOutUs / 1_000_000f, { v -> vm.updateClip(R.string.hist_volume, c.id, live = true) { it.copy(fadeOutUs = (v * 1_000_000f).toLong()) } },
+                range = 0f..minOf(10f, maxFade), onFinished = { vm.commit() }, format = ::secs, inputScale = 1f)
+        }
+        else -> if (c.kind == ClipKind.VIDEO && c.media?.hasAudio == true && !c.audioDetached) {
+            OutlinedButton({ vm.edit(R.string.hist_detach) { it.detachAudio(c.id) } }, Modifier.padding(horizontal = 16.dp)) { Text(stringResource(R.string.detach_audio)) }
+        } else Text("–", Modifier.padding(16.dp))
     }
 }
 
 @Composable
 fun TransformPanel(vm: EditorViewModel, c: Clip) {
     val tr = c.transform
-    // Modo Fácil: Tamaño / Girar / Mover / Camino, uno a la vez.
-    if (easyMode(vm)) {
-        var sub by remember { mutableStateOf("size") }
-        var drawingPath by remember { mutableStateOf(false) }
-        val hasPath = !c.keyframes["x"].isNullOrEmpty() && !c.keyframes["y"].isNullOrEmpty()
-        EasyBar(
-            listOf(
-                EasyTab("size", Icons.Default.OpenInFull, R.string.size), EasyTab("turn", Icons.Default.RotateRight, R.string.rotation),
-                EasyTab("move", Icons.Default.OpenWith, R.string.easy_move), EasyTab("path", Icons.Default.Gesture, R.string.stk_act_path, hasPath),
-            ),
-            sub,
-        ) { k -> if (k == "path") drawingPath = true else sub = k }
-        when (sub) {
-            "size" -> {
-                PropSlider(vm, c, "scale", stringResource(R.string.scale), R.string.hist_transform, 0.05f..5f, 1f)
-                PropSlider(vm, c, "opacity", stringResource(R.string.opacity), R.string.hist_transform, 0f..1f, 1f)
-            }
-            "turn" -> {
-                PropSlider(vm, c, "rotation", stringResource(R.string.rotation), R.string.hist_transform, -180f..180f, 0f, { String.format(Locale.US, "%.0f°", it) }, 1f)
-                Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(tr.flipH, { vm.updateClip(R.string.hist_transform, c.id) { it.copy(transform = it.transform.copy(flipH = !tr.flipH)) } }, { Text(stringResource(R.string.flip_h)) })
-                    FilterChip(tr.flipV, { vm.updateClip(R.string.hist_transform, c.id) { it.copy(transform = it.transform.copy(flipV = !tr.flipV)) } }, { Text(stringResource(R.string.flip_v)) })
-                    AssistChip({ vm.updateClip(R.string.hist_transform, c.id) { it.copy(transform = it.transform.copy(rotation = ((it.transform.rotation + 90f + 180f) % 360f) - 180f)) } }, { Text("+90°") })
-                }
-            }
-            else -> {
-                PropSlider(vm, c, "x", stringResource(R.string.position_x), R.string.hist_transform, -1f..1f, 0f)
-                PropSlider(vm, c, "y", stringResource(R.string.position_y), R.string.hist_transform, -1f..1f, 0f)
+    val pro = !easyMode(vm)
+    // Botones grandes (Tamaño / Girar / Mover / Camino) en los dos modos; en Pro, además, "Encaje" (ajuste y mezcla).
+    var sub by remember { mutableStateOf("size") }
+    var drawingPath by remember { mutableStateOf(false) }
+    val hasPath = !c.keyframes["x"].isNullOrEmpty() && !c.keyframes["y"].isNullOrEmpty()
+    val tabs = buildList {
+        add(EasyTab("size", Icons.Default.OpenInFull, R.string.size))
+        add(EasyTab("turn", Icons.Default.RotateRight, R.string.rotation))
+        add(EasyTab("move", Icons.Default.OpenWith, R.string.easy_move))
+        if (pro && c.isVisual) add(EasyTab("fit", Icons.Default.AspectRatio, R.string.fit))
+        add(EasyTab("path", Icons.Default.Gesture, R.string.stk_act_path, hasPath))
+    }
+    EasyBar(tabs, sub) { k -> if (k == "path") drawingPath = true else sub = k }
+    when (sub) {
+        "size" -> {
+            PropSlider(vm, c, "scale", stringResource(R.string.scale), R.string.hist_transform, 0.05f..5f, 1f)
+            PropSlider(vm, c, "opacity", stringResource(R.string.opacity), R.string.hist_transform, 0f..1f, 1f)
+        }
+        "turn" -> {
+            PropSlider(vm, c, "rotation", stringResource(R.string.rotation), R.string.hist_transform, -180f..180f, 0f, { String.format(Locale.US, "%.0f°", it) }, 1f)
+            Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(tr.flipH, { vm.updateClip(R.string.hist_transform, c.id) { it.copy(transform = it.transform.copy(flipH = !tr.flipH)) } }, { Text(stringResource(R.string.flip_h), maxLines = 1) })
+                FilterChip(tr.flipV, { vm.updateClip(R.string.hist_transform, c.id) { it.copy(transform = it.transform.copy(flipV = !tr.flipV)) } }, { Text(stringResource(R.string.flip_v), maxLines = 1) })
+                AssistChip({ vm.updateClip(R.string.hist_transform, c.id) { it.copy(transform = it.transform.copy(rotation = ((it.transform.rotation + 90f + 180f) % 360f) - 180f)) } }, { Text("+90°", maxLines = 1) })
             }
         }
-        AssistChip({ vm.updateClip(R.string.hist_transform, c.id) { it.copy(transform = Transform(fit = it.transform.fit), keyframes = it.keyframes - setOf("x", "y", "scale", "rotation", "opacity")) } }, { Text(stringResource(R.string.reset)) }, Modifier.padding(horizontal = 12.dp))
-        if (drawingPath) DrawPathDialog(vm, c) { drawingPath = false }
-        return
-    }
-    PropSlider(vm, c, "scale", stringResource(R.string.scale), R.string.hist_transform, 0.05f..5f, 1f)
-    PropSlider(vm, c, "rotation", stringResource(R.string.rotation), R.string.hist_transform, -180f..180f, 0f, { String.format(Locale.US, "%.0f°", it) }, 1f)
-    PropSlider(vm, c, "x", stringResource(R.string.position_x), R.string.hist_transform, -1f..1f, 0f)
-    PropSlider(vm, c, "y", stringResource(R.string.position_y), R.string.hist_transform, -1f..1f, 0f)
-    PropSlider(vm, c, "opacity", stringResource(R.string.opacity), R.string.hist_transform, 0f..1f, 1f)
-    if (c.isVisual) {
-        SectionTitle(stringResource(R.string.fit))
-        ChipRow(FitMode.entries, tr.fit, { stringResource(when (it) { FitMode.FIT -> R.string.fit_fit; FitMode.FILL -> R.string.fit_fill; FitMode.STRETCH -> R.string.fit_stretch }) }) { f ->
-            vm.updateClip(R.string.hist_transform, c.id) { it.copy(transform = it.transform.copy(fit = f)) }
+        "move" -> {
+            PropSlider(vm, c, "x", stringResource(R.string.position_x), R.string.hist_transform, -1f..1f, 0f)
+            PropSlider(vm, c, "y", stringResource(R.string.position_y), R.string.hist_transform, -1f..1f, 0f)
         }
-        SectionTitle(stringResource(R.string.blend_mode))
-        ChipRow(BlendMode.entries, tr.blend, {
-            stringResource(when (it) {
-                BlendMode.NORMAL -> R.string.blend_normal; BlendMode.SCREEN -> R.string.blend_screen; BlendMode.ADD -> R.string.blend_add
-                BlendMode.MULTIPLY -> R.string.blend_multiply; BlendMode.LIGHTEN -> R.string.blend_lighten; BlendMode.DARKEN -> R.string.blend_darken
-            })
-        }) { b -> vm.updateClip(R.string.hist_transform, c.id) { it.copy(transform = it.transform.copy(blend = b)) } }
+        "fit" -> if (c.isVisual) {
+            SectionTitle(stringResource(R.string.fit))
+            ChipRow(FitMode.entries, tr.fit, { stringResource(when (it) { FitMode.FIT -> R.string.fit_fit; FitMode.FILL -> R.string.fit_fill; FitMode.STRETCH -> R.string.fit_stretch }) }) { f ->
+                vm.updateClip(R.string.hist_transform, c.id) { it.copy(transform = it.transform.copy(fit = f)) }
+            }
+            SectionTitle(stringResource(R.string.blend_mode))
+            ChipRow(BlendMode.entries, tr.blend, {
+                stringResource(when (it) {
+                    BlendMode.NORMAL -> R.string.blend_normal; BlendMode.SCREEN -> R.string.blend_screen; BlendMode.ADD -> R.string.blend_add
+                    BlendMode.MULTIPLY -> R.string.blend_multiply; BlendMode.LIGHTEN -> R.string.blend_lighten; BlendMode.DARKEN -> R.string.blend_darken
+                })
+            }) { b -> vm.updateClip(R.string.hist_transform, c.id) { it.copy(transform = it.transform.copy(blend = b)) } }
+        }
     }
-    Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        FilterChip(tr.flipH, { vm.updateClip(R.string.hist_transform, c.id) { it.copy(transform = it.transform.copy(flipH = !tr.flipH)) } }, { Text(stringResource(R.string.flip_h)) })
-        FilterChip(tr.flipV, { vm.updateClip(R.string.hist_transform, c.id) { it.copy(transform = it.transform.copy(flipV = !tr.flipV)) } }, { Text(stringResource(R.string.flip_v)) })
-        AssistChip({ vm.updateClip(R.string.hist_transform, c.id) { it.copy(transform = it.transform.copy(rotation = ((it.transform.rotation + 90f + 180f) % 360f) - 180f)) } }, { Text("+90°") })
-        AssistChip({ vm.updateClip(R.string.hist_transform, c.id) { it.copy(transform = Transform(fit = it.transform.fit), keyframes = it.keyframes - setOf("x", "y", "scale", "rotation", "opacity")) } }, { Text(stringResource(R.string.reset)) })
-    }
+    AssistChip({ vm.updateClip(R.string.hist_transform, c.id) { it.copy(transform = Transform(fit = it.transform.fit), keyframes = it.keyframes - setOf("x", "y", "scale", "rotation", "opacity")) } }, { Text(stringResource(R.string.reset), maxLines = 1) }, Modifier.padding(horizontal = 12.dp))
+    if (drawingPath) DrawPathDialog(vm, c) { drawingPath = false }
 }
 
 @Composable
@@ -339,25 +317,17 @@ fun AnimationPanel(vm: EditorViewModel, c: Clip) {
     // Dibujar camino: vale para cualquier elemento que se pueda animar (texto, pegatina, capa de medios...).
     var drawingPath by remember { mutableStateOf(false) }
     val hasPath = !c.keyframes["x"].isNullOrEmpty() && !c.keyframes["y"].isNullOrEmpty()
-    val easy = easyMode(vm)
-    // Modo Fácil: botones grandes Entrada / Bucle / Salida / Camino. Pro: pestañas y chips.
-    if (easy) EasyBar(
+    EasyBar(
         listOf(
             EasyTab("0", Icons.AutoMirrored.Filled.Login, R.string.anim_in, c.animIn != null), EasyTab("2", Icons.Default.Loop, R.string.anim_loop, c.animLoop != null),
             EasyTab("1", Icons.AutoMirrored.Filled.Logout, R.string.anim_out, c.animOut != null), EasyTab("path", Icons.Default.Gesture, R.string.stk_act_path, hasPath),
         ),
         tab.toString(),
     ) { k -> if (k == "path") drawingPath = true else tab = k.toInt() }
-    else Row(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        AssistChip({ drawingPath = true }, { Text(stringResource(R.string.stk_draw_path)) }, leadingIcon = { Icon(androidx.compose.material.icons.Icons.Default.Gesture, null) })
-        if (hasPath) AssistChip({ vm.updateClip(R.string.hist_animation, c.id) { it.copy(keyframes = it.keyframes - setOf("x", "y")) } }, { Text(stringResource(R.string.stk_path_remove)) }, leadingIcon = { Icon(androidx.compose.material.icons.Icons.Default.Close, null) })
-    }
+    if (hasPath) AssistChip({ vm.updateClip(R.string.hist_animation, c.id) { it.copy(keyframes = it.keyframes - setOf("x", "y")) } }, { Text(stringResource(R.string.stk_path_remove), maxLines = 1) }, Modifier.padding(horizontal = 12.dp), leadingIcon = { Icon(Icons.Default.Close, null) })
     if (drawingPath) DrawPathDialog(vm, c) { drawingPath = false }
     val kinds = listOf(AnimKind.IN, AnimKind.OUT, AnimKind.LOOP)
     val labels = listOf(R.string.anim_in, R.string.anim_out, R.string.anim_loop)
-    if (!easy) Row(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        for (i in 0..2) FilterChip(tab == i, { tab = i }, { Text(stringResource(labels[i])) })
-    }
     val kind = kinds[tab]
     val cur = when (kind) { AnimKind.IN -> c.animIn; AnimKind.OUT -> c.animOut; AnimKind.LOOP -> c.animLoop }
     fun set(r: AnimRef?) = vm.updateClip(R.string.hist_animation, c.id) { when (kind) { AnimKind.IN -> it.copy(animIn = r); AnimKind.OUT -> it.copy(animOut = r); AnimKind.LOOP -> it.copy(animLoop = r) } }
@@ -439,37 +409,38 @@ fun AdjustPanel(vm: EditorViewModel, c: Clip) {
         Triple("sharpen", R.string.adj_sharpen, 0f..1f), Triple("vignette", R.string.adj_vignette, 0f..1f),
         Triple("grain", R.string.adj_grain, 0f..1f),
     )
-    // Modo Fácil: Luz / Color / Detalle (las curvas son solo del modo Pro).
-    if (easyMode(vm)) {
-        var sub by remember { mutableStateOf("light") }
-        EasyBar(listOf(EasyTab("light", Icons.Default.WbSunny, R.string.easy_light), EasyTab("color", Icons.Default.Palette, R.string.color), EasyTab("detail", Icons.Default.Tune, R.string.easy_detail)), sub) { sub = it }
+    val pro = !easyMode(vm)
+    // Botones grandes (Luz / Color / Detalle) en los dos modos; en Pro, además, "Curvas".
+    var sub by remember { mutableStateOf("light") }
+    val tabs = buildList {
+        add(EasyTab("light", Icons.Default.WbSunny, R.string.easy_light)); add(EasyTab("color", Icons.Default.Palette, R.string.color)); add(EasyTab("detail", Icons.Default.Tune, R.string.easy_detail))
+        if (pro) add(EasyTab("curves", Icons.Default.ShowChart, R.string.curves))
+    }
+    EasyBar(tabs, sub) { sub = it }
+    if (sub == "curves" && pro) {
+        var ch by remember { mutableIntStateOf(0) }
+        Row(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            for ((i, n) in listOf("RGB", "R", "G", "B").withIndex()) FilterChip(ch == i, { ch = i }, { Text(n) })
+        }
+        val identity = listOf(0f, 0.25f, 0.5f, 0.75f, 1f)
+        val cur = (when (ch) { 0 -> c.color.curve; 1 -> c.color.curveR; 2 -> c.color.curveG; else -> c.color.curveB }).ifEmpty { identity }
+        val names = listOf(R.string.curve_blacks, R.string.curve_shadows, R.string.curve_mids, R.string.curve_highlights, R.string.curve_whites)
+        for (i in 0 until 5) {
+            PreciseSlider(stringResource(names[i]), cur[i], { v ->
+                vm.updateClip(h, c.id, live = true) { x ->
+                    val base = (when (ch) { 0 -> x.color.curve; 1 -> x.color.curveR; 2 -> x.color.curveG; else -> x.color.curveB }).ifEmpty { identity }
+                    val n = base.mapIndexed { k, old -> if (k == i) v else old }
+                    x.copy(color = when (ch) { 0 -> x.color.copy(curve = n); 1 -> x.color.copy(curveR = n); 2 -> x.color.copy(curveG = n); else -> x.color.copy(curveB = n) })
+                }
+            }, range = 0f..1f, default = identity[i], onFinished = { vm.commit() })
+        }
+    } else {
         val keys = when (sub) {
             "light" -> setOf("exposure", "brightness", "contrast", "highlights", "shadows")
             "color" -> setOf("saturation", "vibrance", "temperature", "tint", "hue")
             else -> setOf("lightness", "fade", "sharpen", "vignette", "grain")
         }
         for ((prop, name, range) in rows) if (prop in keys) PropSlider(vm, c, prop, stringResource(name), h, range, 0f)
-        TextButton({ vm.updateClip(h, c.id) { it.copy(color = ColorAdjust(), keyframes = it.keyframes.filterKeys { k -> k.startsWith("fx:") || k in setOf("x", "y", "scale", "rotation", "opacity", "volume") || k.startsWith("mask.") || zoneKeyIndex(k) >= 0 }) } },
-            Modifier.padding(horizontal = 8.dp)) { Text(stringResource(R.string.reset_all)) }
-        return
-    }
-    for ((prop, name, range) in rows) PropSlider(vm, c, prop, stringResource(name), h, range, 0f)
-    SectionTitle(stringResource(R.string.curves))
-    var ch by remember { mutableIntStateOf(0) }
-    Row(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        for ((i, n) in listOf("RGB", "R", "G", "B").withIndex()) FilterChip(ch == i, { ch = i }, { Text(n) })
-    }
-    val identity = listOf(0f, 0.25f, 0.5f, 0.75f, 1f)
-    val cur = (when (ch) { 0 -> c.color.curve; 1 -> c.color.curveR; 2 -> c.color.curveG; else -> c.color.curveB }).ifEmpty { identity }
-    val names = listOf(R.string.curve_blacks, R.string.curve_shadows, R.string.curve_mids, R.string.curve_highlights, R.string.curve_whites)
-    for (i in 0 until 5) {
-        PreciseSlider(stringResource(names[i]), cur[i], { v ->
-            vm.updateClip(h, c.id, live = true) { x ->
-                val base = (when (ch) { 0 -> x.color.curve; 1 -> x.color.curveR; 2 -> x.color.curveG; else -> x.color.curveB }).ifEmpty { identity }
-                val n = base.mapIndexed { k, old -> if (k == i) v else old }
-                x.copy(color = when (ch) { 0 -> x.color.copy(curve = n); 1 -> x.color.copy(curveR = n); 2 -> x.color.copy(curveG = n); else -> x.color.copy(curveB = n) })
-            }
-        }, range = 0f..1f, default = identity[i], onFinished = { vm.commit() })
     }
     TextButton({ vm.updateClip(h, c.id) { it.copy(color = ColorAdjust(), keyframes = it.keyframes.filterKeys { k -> k.startsWith("fx:") || k in setOf("x", "y", "scale", "rotation", "opacity", "volume") || k.startsWith("mask.") || zoneKeyIndex(k) >= 0 }) } },
         Modifier.padding(horizontal = 8.dp)) { Text(stringResource(R.string.reset_all)) }
