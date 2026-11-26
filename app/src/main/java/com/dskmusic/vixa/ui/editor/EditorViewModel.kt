@@ -38,7 +38,10 @@ import com.dskmusic.vixa.model.mainIndexAfter
 import com.dskmusic.vixa.model.newId
 import com.dskmusic.vixa.model.normalized
 import com.dskmusic.vixa.model.pasteAttributes
+import com.dskmusic.vixa.model.keyframeDurationChanges
 import com.dskmusic.vixa.model.removeClips
+import com.dskmusic.vixa.model.rescaleClipKeyframes
+import com.dskmusic.vixa.model.rescaleKeyframes
 import com.dskmusic.vixa.model.rippleGap
 import com.dskmusic.vixa.model.replaceMedia
 import com.dskmusic.vixa.model.sourceOffsetAt
@@ -201,7 +204,7 @@ class EditorViewModel(private val context: Context, val container: AppContainer,
         container.settings.update { it.copy(openPositionUs = player.positionUs.value) }
         player.release()
         container.proxies.cancelAll()
-        saveNow()
+        saveNow(updateThumb = true)
     }
 
     /** Salir del editor: ya no hay sesión que restaurar. */
@@ -225,13 +228,36 @@ class EditorViewModel(private val context: Context, val container: AppContainer,
     /** Lo pone la vista previa: devuelve el fotograma que se ve ahora (solo desde el hilo principal) o null. */
     var previewShot: (() -> android.graphics.Bitmap?)? = null
 
+    /** Última captura buena (no negra) de la vista previa: miniatura de reserva si al guardar la superficie ya no existe. */
+    private var lastGoodShot: android.graphics.Bitmap? = null
+
+    private fun android.graphics.Bitmap.nearlyBlack(): Boolean {
+        var sum = 0L
+        val n = 8
+        for (i in 0 until n) for (j in 0 until n) {
+            val c = getPixel(i * (width - 1) / (n - 1), j * (height - 1) / (n - 1))
+            sum += ((c shr 16) and 255) + ((c shr 8) and 255) + (c and 255)
+        }
+        return sum / (n * n * 3) < 12
+    }
+
+    /**
+     * El fotograma que se ve ahora en la vista previa (con capas, emojis y pegatinas), o la última captura buena si ahora no hay
+     * superficie o sale negro. Es la miniatura del proyecto: refleja el último fotograma que el usuario tenía seleccionado.
+     */
+    private fun bestShot(): android.graphics.Bitmap? {
+        val live = try { previewShot?.invoke() } catch (e: Throwable) { null }
+        if (live != null && !live.isRecycled && !live.nearlyBlack()) { lastGoodShot = live; return live }
+        return lastGoodShot ?: live
+    }
+
     private fun saveNow(updateThumb: Boolean = false) {
         val p = _project.value ?: return
         saveJob?.cancel()
         val hl = history?.list()
         val hp = history?.position ?: 0
         // Miniatura del proyecto: el fotograma real de la vista previa (con efectos y filtros); si es negro, la guarda con el primer medio.
-        val shot = if (updateThumb) try { previewShot?.invoke() } catch (e: Throwable) { null } else null
+        val shot = if (updateThumb) bestShot() else null
         container.appScope.launch {
             try { container.projects.save(p, updateThumb, shot) } catch (e: Throwable) { ErrorLog.log("Save", e) }
             if (hl != null) container.projects.saveHistory(p.id, hl, hp)
@@ -244,11 +270,19 @@ class EditorViewModel(private val context: Context, val container: AppContainer,
         saveJob = viewModelScope.launch {
             delay(900)
             val p = _project.value ?: return@launch
-            try { container.projects.save(p) } catch (e: Throwable) { ErrorLog.log("Autosave", e) }
+            // Cada autoguardado deja también la miniatura con el fotograma actual (así nunca queda vacía ni desfasada).
+            val shot = bestShot()
+            try { container.projects.save(p, updateThumb = shot != null, thumb = shot) } catch (e: Throwable) { ErrorLog.log("Autosave", e) }
         }
     }
 
     fun save() { saveNow(updateThumb = true); toast(str(R.string.saved)) }
+
+    /** Renombra y guarda al momento (sin esperar al autoguardado, que podría perderse al salir enseguida). */
+    fun rename(name: String) {
+        edit(R.string.hist_rename) { it.copy(name = name.trim()) }
+        saveNow()
+    }
 
     // --------------------------------------------------------------------------------------
     // Edición e historial
@@ -261,17 +295,42 @@ class EditorViewModel(private val context: Context, val container: AppContainer,
     fun edit(label: String, live: Boolean = false, f: (Project) -> Project) {
         val h = history ?: return
         val cur = _project.value ?: return
-        val next = try { f(cur).rippleGap(cur) } catch (e: Throwable) { ErrorLog.log("Edit/$label", e); toast(str(R.string.err_generic)); return }
+        val raw = try { f(cur).rippleGap(cur) } catch (e: Throwable) { ErrorLog.log("Edit/$label", e); toast(str(R.string.err_generic)); return }
+        // Cambio de duración con movimientos (fotogramas clave): en modo Fácil se reajustan solos; en Pro se pregunta al terminar el gesto.
+        val pro = settings.proMode
+        val next = if (pro) raw else raw.rescaleKeyframes(cur)
         if (next === cur || next == cur) return
+        if (pro) for ((id, old) in raw.keyframeDurationChanges(cur)) pendingRescale.putIfAbsent(id, old)
         if (live && gestureLabel == label) h.replaceCurrent(next) else h.push(label, next)
         gestureLabel = if (live) label else null
         setProject(next)
+        if (pro && !live) flushRescale()
+    }
+
+    private val pendingRescale = LinkedHashMap<String, Long>()
+    private val _rescaleAsk = kotlinx.coroutines.flow.MutableStateFlow<List<Pair<String, Long>>>(emptyList())
+    /** Clips (id, duración anterior) cuyo movimiento puede ajustarse a la nueva duración: la pantalla pregunta al usuario. */
+    val rescaleAsk: kotlinx.coroutines.flow.StateFlow<List<Pair<String, Long>>> = _rescaleAsk
+
+    private fun flushRescale() {
+        if (pendingRescale.isEmpty()) return
+        val p = _project.value
+        val list = pendingRescale.entries.filter { (id, old) -> p?.clip(id)?.let { it.keyframes.isNotEmpty() && it.durationUs != old } == true }.map { it.key to it.value }
+        pendingRescale.clear()
+        if (list.isNotEmpty()) _rescaleAsk.value = list
+    }
+
+    /** Respuesta del aviso: ajusta el movimiento a la nueva duración (sí) o lo deja como está (no). */
+    fun answerRescale(yes: Boolean) {
+        val list = _rescaleAsk.value
+        _rescaleAsk.value = emptyList()
+        if (yes && list.isNotEmpty()) edit(R.string.hist_keyframe) { p -> list.fold(p) { acc, (id, old) -> acc.rescaleClipKeyframes(id, old) } }
     }
 
     fun edit(labelRes: Int, live: Boolean = false, f: (Project) -> Project) = edit(str(labelRes), live, f)
 
     /** Cierra el gesto en curso (soltar un slider, terminar un arrastre). */
-    fun commit() { gestureLabel = null }
+    fun commit() { gestureLabel = null; flushRescale() }
 
     private fun setProject(p: Project) {
         _project.value = p
@@ -281,9 +340,10 @@ class EditorViewModel(private val context: Context, val container: AppContainer,
         scheduleSave()
     }
 
-    fun undo() { gestureLabel = null; history?.undo()?.let { setProject(it) } }
-    fun redo() { gestureLabel = null; history?.redo()?.let { setProject(it) } }
-    fun jumpTo(position: Int) { gestureLabel = null; history?.jumpTo(position)?.let { setProject(it) } }
+    private fun resetRescale() { pendingRescale.clear(); _rescaleAsk.value = emptyList() }
+    fun undo() { gestureLabel = null; resetRescale(); history?.undo()?.let { setProject(it) } }
+    fun redo() { gestureLabel = null; resetRescale(); history?.redo()?.let { setProject(it) } }
+    fun jumpTo(position: Int) { gestureLabel = null; resetRescale(); history?.jumpTo(position)?.let { setProject(it) } }
     val canUndo: Boolean get() = history?.canUndo == true
     val canRedo: Boolean get() = history?.canRedo == true
     fun historyList(): List<History.Entry> = history?.list() ?: emptyList()

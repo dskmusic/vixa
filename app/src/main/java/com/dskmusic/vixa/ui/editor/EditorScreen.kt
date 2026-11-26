@@ -135,6 +135,12 @@ import kotlinx.coroutines.delay
 
 private class ToolDef(val id: String, val icon: ImageVector, val label: Int, val action: (() -> Unit)? = null)
 
+/** Herramientas visibles en modo Fácil (sin clip y con clip seleccionado). El resto es solo del modo Pro. */
+private val EASY_TOOLS = setOf(
+    "add", "text", "templates", "stickers", "audio", "voiceover", "subtitles", "ai", "adjlayer", "fxlayer", "canvas",
+    "split", "delete", "dup", "speed", "volume", "animation", "filter", "adjust", "effects", "transition", "crop", "freeze",
+)
+
 @Composable
 fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit, onOpenProject: (String) -> Unit) {
     val context = LocalContext.current
@@ -282,12 +288,15 @@ fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit,
         add(ToolDef("keyframes", Icons.Default.Diamond, R.string.keyframes))
         add(ToolDef("extras", Icons.Default.AutoFixHigh, R.string.extras))
     }
-    val tools = if (clip != null) clipTools else rootTools
+    val appSettings by container.settings.flow.collectAsState()
+    val pro = appSettings.proMode
+    val tools = (if (clip != null) clipTools else rootTools).filter { pro || it.id in EASY_TOOLS }
 
     val topBar: @Composable (Modifier) -> Unit = { m ->
         Row(m.height(48.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton({ exit() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
             Text(p.name.ifBlank { stringResource(R.string.untitled) }, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall)
+            androidx.compose.material3.FilterChip(pro, { vm.container.settings.update { it.copy(proMode = !it.proMode) } }, { Text("Pro") }, Modifier.padding(end = 4.dp))
             HistoryButton(vm, true)
             HistoryButton(vm, false)
             FilledTonalButton({ vm.player.pause(); exporting = true }, Modifier.padding(end = 8.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp)) { Text(stringResource(R.string.export)) }
@@ -315,6 +324,18 @@ fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit,
     }
 
     // --- Diseños ----------------------------------------------------------------------------
+    // Pro: al cambiar la duración de algo con movimiento, se pregunta si se ajusta (en modo Fácil se ajusta solo).
+    val rescaleAsk by vm.rescaleAsk.collectAsState()
+    if (rescaleAsk.isNotEmpty()) androidx.compose.material3.AlertDialog(
+        onDismissRequest = { vm.answerRescale(false) },
+        title = { Text(stringResource(R.string.rescale_ask_title)) },
+        text = { Text(stringResource(R.string.rescale_ask_body)) },
+        confirmButton = { androidx.compose.material3.TextButton({ vm.answerRescale(true) }) { Text(stringResource(R.string.rescale_yes)) } },
+        dismissButton = { androidx.compose.material3.TextButton({ vm.answerRescale(false) }) { Text(stringResource(R.string.rescale_no)) } },
+    )
+    // Reparto vista previa / línea de tiempo: dp que se le quitan a la línea de tiempo y se le dan a la vista previa (0 = normal).
+    var splitDelta by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    val splitDensity = androidx.compose.ui.platform.LocalDensity.current.density
     val sizeClass = currentWindowAdaptiveInfo().windowSizeClass
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         // La orientación se mide SIN el teclado: si no, al abrir el panel de emojis (más alto) el diseño
@@ -343,11 +364,12 @@ fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit,
             } else if (landscape || expanded) {
                 // Horizontal / tablet: vista previa a un lado, herramientas al otro y línea de tiempo ancha abajo.
                 val sideW = if (expanded) 400.dp else if (medium) 340.dp else maxWidth * 0.4f
+                val landBase = if (maxH < 420.dp) maxH * 0.36f else minOf(maxH * 0.4f, 300.dp)
                 Column(Modifier.fillMaxSize()) {
                     Row(Modifier.fillMaxWidth().weight(1f)) {
                         Column(Modifier.weight(1f).fillMaxHeight()) {
                             Preview(vm, p, Modifier.fillMaxWidth().weight(1f))
-                            Transport(vm, p)
+                            Transport(vm, p, onResize = { dy -> splitDelta = (splitDelta + dy / splitDensity).coerceIn(landBase.value - maxH.value * 0.7f, landBase.value - 90f) }, onReset = { splitDelta = 0f })
                         }
                         Surface(Modifier.width(sideW).fillMaxHeight(), color = MaterialTheme.colorScheme.surfaceContainer) {
                             Column(Modifier.fillMaxSize()) {
@@ -360,7 +382,7 @@ fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit,
                             }
                         }
                     }
-                    Timeline(vm, p, Modifier.fillMaxWidth().height(if (maxH < 420.dp) maxH * 0.36f else minOf(maxH * 0.4f, 300.dp)), addKind)
+                    Timeline(vm, p, Modifier.fillMaxWidth().height((landBase - splitDelta.dp).coerceIn(90.dp, maxH * 0.7f)), addKind)
                 }
             } else {
                 // Vertical: vista previa arriba, línea de tiempo en el centro y herramientas abajo.
@@ -371,10 +393,12 @@ fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit,
                     BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
                         val tlMin = if (tool.isEmpty()) minOf(maxH * 0.32f, 280.dp) else 112.dp
                         val fitH = if (p.width > 0) maxWidth * (p.height.toFloat() / p.width) else maxHeight
-                        val previewH = minOf(fitH, maxHeight - 44.dp - tlMin).coerceAtLeast(0.dp)
+                        val baseH = minOf(fitH, maxHeight - 44.dp - tlMin).coerceAtLeast(0.dp)
+                        val hiH = (maxHeight - 44.dp - 90.dp).coerceAtLeast(96.dp)
+                        val previewH = (baseH + splitDelta.dp).coerceIn(96.dp, hiH)
                         Column(Modifier.fillMaxSize()) {
                             Preview(vm, p, Modifier.fillMaxWidth().height(previewH))
-                            Transport(vm, p)
+                            Transport(vm, p, onResize = { dy -> splitDelta = (splitDelta + dy / splitDensity).coerceIn(96f - baseH.value, hiH.value - baseH.value) }, onReset = { splitDelta = 0f })
                             Timeline(vm, p, Modifier.fillMaxWidth().weight(1f), addKind)
                         }
                     }

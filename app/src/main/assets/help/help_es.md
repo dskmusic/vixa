@@ -234,7 +234,28 @@ Con {icon:Fullscreen} la vista previa ocupa toda la pantalla **solo para mirar**
 
 ---
 
+## Modo Pro y modo Normal
+
+Arriba, en la barra del editor, hay un botón **Pro**. Viene **activado** y muestra todas las herramientas. Si lo **apagas** pasas al **modo Normal**: solo se ven las herramientas principales y los rombos de animación (keyframes) de la línea de tiempo quedan ocultos. La app **recuerda tu elección**: los proyectos nuevos se abren en el modo en que lo dejaste.
+
+## Dibujar un camino a cualquier elemento
+
+En cualquier elemento que se pueda animar (texto, sticker, foto, vídeo en superposición…) abre **Animar** y toca **Dibujar camino**. Verás tu vídeo de fondo: dibuja con el dedo por dónde debe moverse y toca **Listo ✓**. Se crean los keyframes de posición por ti. Para quitarlo toca **Quitar camino**.
+
+Si después cambias la **duración** del elemento (por ejemplo, lo alargas):
+
+- En **modo Pro** la app te **pregunta** si quieres ajustar el movimiento a la nueva duración o dejarlo como está.
+- En **modo Normal** lo **ajusta directamente**, sin preguntar.
+
+## Repartir la pantalla entre la vista previa y la línea de tiempo
+
+**Mantén pulsada 1 segundo** la barra de transporte (la del reloj y el botón de play, en un hueco entre botones; fíjate en el pequeño tirador de arriba) y arrástrala **arriba o abajo**: la vista previa crece y la línea de tiempo se reduce, o al revés. Con un **doble toque** en la barra todo vuelve al tamaño normal.
+
+---
+
 # {icon:Add} 4. Añadir medios
+
+Cuando en una pestaña **Online** pulsas **Descargar e insertar**, el elemento se **inserta directamente** (junto con lo que ya tuvieras marcado), sin pasar por el botón de arriba.
 
 Toca {icon:Add} **Añadir medios** (o el botón **+** de la línea de tiempo). Se abre el selector con tres pestañas:
 

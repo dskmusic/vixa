@@ -284,7 +284,10 @@ fun MediaPickerDialog(
                             filter == PickFilter.VISUAL -> listOf(OnlineType.IMAGE, OnlineType.ILLUSTRATION, OnlineType.VIDEO, OnlineType.GIF)
                             else -> OnlineType.entries.toList()
                         }
-                        OnlineBrowser(container, types, Modifier.fillMaxSize().padding(top = 4.dp), stickersFirst = stickers) { path -> toggle(path) }
+                        OnlineBrowser(container, types, Modifier.fillMaxSize().padding(top = 4.dp), stickersFirst = stickers) { path ->
+                            // Descargar e insertar: se inserta ya (con lo que hubiera marcado), sin pasar por el botón de arriba.
+                            if (!multi) toggle(path) else { onDismiss(); onPicked(if (path in selected) selected else selected + path) }
+                        }
                     }
                     else -> if (colorActions != null) ColorTab(colorActions, onDismiss)
                 }

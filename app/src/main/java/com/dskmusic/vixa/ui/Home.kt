@@ -166,7 +166,11 @@ fun HomeScreen(
     var trashView by remember { mutableStateOf(false) }
     var purgeAsk by remember { mutableStateOf<ProjectInfo?>(null) }
     var emptyAsk by remember { mutableStateOf(false) }
-    LaunchedEffect(reload) { projects = container.projects.list(); trashed = container.projects.trashed() }
+    // Renombrar desde las tarjetas de "recientes": el diálogo vive aquí y no dentro de la fila perezosa, que desmonta la
+    // tarjeta (y con ella el diálogo y lo escrito) cuando el teclado encoge la pantalla y la fila queda fuera de la vista.
+    var renaming by remember { mutableStateOf<ProjectInfo?>(null) }
+    val storeChanges by container.projects.changes.collectAsState()
+    LaunchedEffect(reload, storeChanges) { projects = container.projects.list(); trashed = container.projects.trashed() }
 
     // Proyecto demo (menú de ayuda): se monta en segundo plano con una ventanita de "Preparando…" y se abre al terminar.
     var demoBusy by remember { mutableStateOf(false) }
@@ -207,18 +211,34 @@ fun HomeScreen(
             if (p == null) error = context.getString(R.string.err_unsupported_media, paths.joinToString(", ") { File(it).name }.take(100)) else createAndOpen(p)
         }
     }
+    /** Importa un .vixa y lo abre. El indicador de carga se quita siempre, también si falla o se cancela. */
+    fun importProject(path: String) {
+        if (busy) return
+        busy = true
+        scope.launch {
+            var id: String? = null
+            try {
+                id = container.projects.importVixa(android.net.Uri.fromFile(File(path)))?.id
+            } catch (e: Throwable) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                com.dskmusic.vixa.data.ErrorLog.log("ImportVixa", e)
+            } finally {
+                busy = false
+            }
+            reload++
+            if (id != null) onOpen(id) else error = context.getString(R.string.err_project_load)
+        }
+    }
+
     // Medios recibidos con "Compartir con / Abrir con": proyecto nuevo con ellos (o importación de .vixa).
     LaunchedEffect(incoming) {
         if (incoming.isEmpty()) return@LaunchedEffect
         val list = incoming
         onIncomingConsumed()
         val vixa = list.firstOrNull { it.lowercase().endsWith(".vixa") }
-        if (vixa != null) {
-            busy = true
-            val p = container.projects.importVixa(android.net.Uri.fromFile(File(vixa)))
-            busy = false
-            if (p != null) onOpen(p.id) else error = context.getString(R.string.err_project_load)
-        } else shared = list
+        // Se importa en el ámbito de la pantalla, no en el de este efecto: onIncomingConsumed() cambia la clave y
+        // cancelaba la importación a medias (el proyecto se guardaba pero la pantalla se quedaba "cargando").
+        if (vixa != null) importProject(vixa) else shared = list
     }
     shared?.let { list ->
         AlertDialog(
@@ -311,7 +331,7 @@ fun HomeScreen(
                     val recent = (projects ?: emptyList()).sortedByDescending { it.modifiedAt }.take(3)
                     androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         items(recent, key = { it.id }) { info ->
-                            Box(Modifier.width(170.dp)) { ProjectCard(container, info, onOpen, onChanged = { reload++ }, onError = { error = it }, thumbAspect = 1.3f) }
+                            Box(Modifier.width(170.dp)) { ProjectCard(container, info, onOpen, onChanged = { reload++ }, onError = { error = it }, thumbAspect = 1.3f, onRename = { renaming = it }) }
                         }
                         item {
                             // Misma altura que las tarjetas: miniatura (170 / 1,3) + fila del nombre (48). El hueco con el botón
@@ -355,7 +375,7 @@ fun HomeScreen(
                             val thumb = container.projects.trashThumbFile(info.id)
                             Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceContainer), verticalAlignment = Alignment.CenterVertically) {
                                 Box(Modifier.size(84.dp, 56.dp).background(Color(0xFF15151C))) {
-                                    if (thumb.exists()) AsyncImage(ImageRequest.Builder(context).data(thumb).build(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                                    if (thumb.exists()) AsyncImage(ImageRequest.Builder(context).data(thumb).memoryCacheKey(thumb.path + thumb.lastModified()).build(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                                 }
                                 Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
                                     Text(info.name.ifBlank { stringResource(R.string.untitled) }, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
@@ -397,15 +417,22 @@ fun HomeScreen(
     pickOriginal?.let { name ->
         MediaPickerDialog(container, PickFilter.VISUAL, multi = true, onDismiss = { pickOriginal = null }) { paths -> pickOriginal = null; fromMedia(paths, name) }
     }
-    if (opening) FileBrowserDialog(stringResource(R.string.open_vixa), exts = setOf("vixa"), onDismiss = { opening = false }) { files ->
-        files.firstOrNull()?.let { f ->
-            busy = true
-            scope.launch {
-                val p = container.projects.importVixa(android.net.Uri.fromFile(File(f)))
-                busy = false
-                if (p != null) onOpen(p.id) else error = context.getString(R.string.err_project_load)
+    renaming?.let { target ->
+        TextInputDialog(stringResource(R.string.rename), target.name, { renaming = null }) { n ->
+            renaming = null
+            val name = n.trim()
+            projects = projects?.map { if (it.id == target.id) it.copy(name = name) else it }
+            container.appScope.launch {
+                val ok = container.projects.rename(target.id, name)
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (!ok) error = context.getString(R.string.err_generic)
+                    reload++
+                }
             }
         }
+    }
+    if (opening) FileBrowserDialog(stringResource(R.string.open_vixa), exts = setOf("vixa"), onDismiss = { opening = false }) { files ->
+        files.firstOrNull()?.let { f -> importProject(f) }
     }
     // Paso 1: elegir el archivo. El selector llama a onDismiss y después a onPicked, así que la herramienta se
     // captura aquí (t) y el paso 2 se abre desde quickProject, no desde quick.
@@ -464,11 +491,13 @@ fun HomeScreen(
 }
 
 @Composable
-private fun ProjectCard(container: AppContainer, info: ProjectInfo, onOpen: (String) -> Unit, onChanged: () -> Unit, onError: (String) -> Unit, thumbAspect: Float = 1.9f) {
+private fun ProjectCard(container: AppContainer, info: ProjectInfo, onOpen: (String) -> Unit, onChanged: () -> Unit, onError: (String) -> Unit, thumbAspect: Float = 1.9f, onRename: ((ProjectInfo) -> Unit)? = null) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var menu by remember { mutableStateOf(false) }
     var dialog by remember { mutableStateOf("") }
+    // Nombre que se ve en la tarjeta: cambia al instante al renombrar, sin esperar a que se relea la lista.
+    var shownName by remember(info.id, info.name) { mutableStateOf(info.name) }
     val thumb = container.projects.thumbFile(info.id)
     Column(Modifier.clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.surfaceContainer).clickable {
         if (info.isTemplate) scope.launch { container.projects.duplicate(info.id, "")?.let { copy -> container.projects.save(copy.copy(isTemplate = false, name = info.name)); onOpen(copy.id) } } else onOpen(info.id)
@@ -481,13 +510,13 @@ private fun ProjectCard(container: AppContainer, info: ProjectInfo, onOpen: (Str
         }
         Row(Modifier.padding(start = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f).padding(vertical = 6.dp)) {
-                Text(info.name.ifBlank { stringResource(R.string.untitled) }, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                Text(shownName.ifBlank { stringResource(R.string.untitled) }, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                 Text(DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(info.modifiedAt)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Box {
                 IconButton({ menu = true }) { Icon(Icons.Default.MoreVert, stringResource(R.string.more)) }
                 DropdownMenu(menu, { menu = false }) {
-                    DropdownMenuItem({ Text(stringResource(R.string.rename)) }, { menu = false; dialog = "rename" })
+                    DropdownMenuItem({ Text(stringResource(R.string.rename)) }, { menu = false; if (onRename != null) onRename(info.copy(name = shownName)) else dialog = "rename" })
                     DropdownMenuItem({ Text(stringResource(R.string.duplicate)) }, { menu = false; scope.launch { container.projects.duplicate(info.id, context.getString(R.string.copy_suffix)); onChanged() } })
                     DropdownMenuItem({ Text(stringResource(R.string.share_project)) }, { menu = false; dialog = "share" })
                     DropdownMenuItem({ Text(stringResource(R.string.export_project)) }, { menu = false; dialog = "export" })
@@ -497,7 +526,19 @@ private fun ProjectCard(container: AppContainer, info: ProjectInfo, onOpen: (Str
         }
     }
     when (dialog) {
-        "rename" -> TextInputDialog(stringResource(R.string.rename), info.name, { dialog = "" }) { n -> dialog = ""; scope.launch { container.projects.rename(info.id, n); onChanged() } }
+        "rename" -> TextInputDialog(stringResource(R.string.rename), shownName, { dialog = "" }) { n ->
+            dialog = ""
+            val old = shownName
+            shownName = n.trim()
+            // En el ámbito de la app (no en el de la tarjeta, que puede desaparecer al reordenarse la lista).
+            container.appScope.launch {
+                val ok = container.projects.rename(info.id, n)
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (!ok) { shownName = old; onError(context.getString(R.string.err_generic)) }
+                    onChanged()
+                }
+            }
+        }
         "delete" -> ConfirmDialog(stringResource(R.string.delete), stringResource(if (info.durationUs <= 0L) R.string.delete_empty_confirm else R.string.delete_project_confirm, info.name), { dialog = "" }) { scope.launch { container.projects.delete(info.id); onChanged() } }
         "share", "export" -> {
             val share = dialog == "share"

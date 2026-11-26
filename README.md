@@ -46,6 +46,7 @@ un minuto tengas un vídeo espectacular y, si quieres, puedas retocar absolutame
 
 - 🪄 **Asistente de vídeo**: eliges tus medios, un estilo (hay **27**) y la música. Vixa detecta el ritmo, corta al compás y monta transiciones, cámara, color, efectos, título y cierre. El resultado es un proyecto normal que se abre en el editor.
 - 🎞️ **Editor multipista completo**: línea de tiempo con vídeo, superposiciones, audio, texto, stickers y capas de ajuste.
+- 🎛️ **Modo Pro / Normal**: un botón en el editor muestra u oculta las herramientas avanzadas (activado por defecto; se recuerda). Con **Dibujar camino** cualquier elemento animable sigue el trazo de tu dedo, y la barra de transporte se arrastra para repartir la pantalla entre vista previa y línea de tiempo.
 - 🌈 **Contenido de sobra**: **85 transiciones**, **180+ efectos** (shaders propios), **100+ filtros** y LUT, **150+ plantillas de texto** animadas, **120 formas** vectoriales y emojis.
 - 🤖 **IA en tu móvil**: subtítulos automáticos, quitar fondos sin croma, seguimiento de objetos, mejora y separación de voz… todo local, tras descargar los modelos una sola vez.
 - 🎚️ **Audio**: ecualizador, cambio de voz, reducción de ruido, atenuación automática de la música, voz en off.

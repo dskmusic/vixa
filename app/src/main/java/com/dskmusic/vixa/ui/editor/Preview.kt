@@ -1,5 +1,10 @@
 package com.dskmusic.vixa.ui.editor
 
+import kotlinx.coroutines.withTimeoutOrNull
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.gestures.drag
 import com.dskmusic.vixa.model.speedAt
 import com.dskmusic.vixa.model.SpeedPoint
 import androidx.compose.material.icons.filled.Diamond
@@ -37,6 +42,8 @@ import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.Grid4x4
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledIconButton
@@ -63,6 +70,7 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -477,15 +485,57 @@ fun Preview(vm: EditorViewModel, project: Project, modifier: Modifier = Modifier
     }
 }
 
-/** Controles de reproducción: fotograma a fotograma, reproducir, bucle, guías y pantalla completa. */
+/** Controles de reproducción: ir al inicio, reproducir, ir al final y pantalla completa. */
 @Composable
-fun Transport(vm: EditorViewModel, project: Project, modifier: Modifier = Modifier) {
+fun Transport(vm: EditorViewModel, project: Project, modifier: Modifier = Modifier, onResize: ((Float) -> Unit)? = null, onReset: (() -> Unit)? = null) {
+    // Mantener pulsado 1 s en un hueco de la barra: se agarra y, arrastrando arriba o abajo, se reparte el espacio entre vista previa y
+    // línea de tiempo. Doble toque en un hueco: vuelve al reparto normal. Los botones no se ven afectados (consumen su toque).
+    var resizing by remember { mutableStateOf(false) }
+    val resizeHaptics = LocalHapticFeedback.current
+    val handleColor = MaterialTheme.colorScheme.outline
+    val activeColor = MaterialTheme.colorScheme.primaryContainer
+    val curResize by rememberUpdatedState(onResize)
+    val curReset by rememberUpdatedState(onReset)
+    val resizeMod = if (onResize == null) Modifier else Modifier.pointerInput(Unit) {
+        var lastTap = 0L
+        awaitEachGesture {
+            val down = awaitFirstDown()
+            var released = false
+            val up = withTimeoutOrNull(1000L) { val u = waitForUpOrCancellation(); released = true; u }
+            if (released) {
+                if (up != null) {
+                    if (down.uptimeMillis - lastTap < 350L) { curReset?.invoke(); lastTap = 0L } else lastTap = down.uptimeMillis
+                }
+                return@awaitEachGesture
+            }
+            resizing = true
+            if (vm.settings.haptics) resizeHaptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            drag(down.id) { ch ->
+                val dy = ch.positionChange().y
+                if (dy != 0f) { ch.consume(); curResize?.invoke(dy) }
+            }
+            resizing = false
+        }
+    }
     val positionUs by vm.player.positionUs.collectAsState()
     val playing by vm.player.playing.collectAsState()
-    val loop by vm.loop.collectAsState()
     val full by vm.fullscreen.collectAsState()
     val settings = vm.container.settings.flow.collectAsState().value
-    Row(modifier.fillMaxWidth().height(44.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+    // Ya no hay botones de bucle ni de guías: si quedaron activados de antes, se apagan (no habría forma de quitarlos).
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        if (vm.loop.value) { vm.loop.value = false; vm.player.setLoop(false) }
+        if (settings.showGrid || settings.showSafeZones) vm.container.settings.update { it.copy(showGrid = false, showSafeZones = false) }
+    }
+    Row(
+        modifier.fillMaxWidth().height(44.dp).then(resizeMod)
+            .background(if (resizing) activeColor else Color.Transparent)
+            .drawBehind {
+                // Tirador discreto arriba al centro: avisa de que la barra se puede agarrar.
+                if (onResize != null) drawRoundRect(if (resizing) handleColor else handleColor.copy(alpha = 0.45f), Offset(size.width / 2f - 18.dp.toPx(), 2.dp.toPx()), androidx.compose.ui.geometry.Size(36.dp.toPx(), 4.dp.toPx()), CornerRadius(2.dp.toPx()))
+            }
+            .padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
         Text(formatTime(positionUs) + " / " + formatTime(project.durationUs), style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(start = 8.dp))
         val selClip = vm.selection.collectAsState().value.singleOrNull()?.let { project.clip(it) }
         // Hueco con "ver todo" centrado, play, hueco con el keyframe centrado y, a la derecha, bucle/guías/pantalla completa.
@@ -497,8 +547,17 @@ fun Transport(vm: EditorViewModel, project: Project, modifier: Modifier = Modifi
                 Icon(Icons.Default.FitScreen, stringResource(R.string.fit_project), tint = if (fitted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        FilledIconButton({ vm.player.toggle() }, Modifier.size(38.dp)) {
-            Icon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow, stringResource(R.string.play_pause))
+        // Ir al inicio · reproducir · ir al final (los laterales, más pequeños que el play).
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton({ vm.player.seekTo(0L) }, Modifier.size(34.dp), enabled = project.durationUs > 0) {
+                Icon(Icons.Default.SkipPrevious, stringResource(R.string.go_to_start), Modifier.size(22.dp))
+            }
+            FilledIconButton({ vm.player.toggle() }, Modifier.size(38.dp)) {
+                Icon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow, stringResource(R.string.play_pause))
+            }
+            IconButton({ vm.player.seekTo((project.durationUs - project.frameUs).coerceAtLeast(0L)) }, Modifier.size(34.dp), enabled = project.durationUs > 0) {
+                Icon(Icons.Default.SkipNext, stringResource(R.string.go_to_end), Modifier.size(22.dp))
+            }
         }
         Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
             // Keyframe global: fija TODAS las propiedades animables del clip seleccionado en este instante (o las quita).
@@ -506,7 +565,7 @@ fun Transport(vm: EditorViewModel, project: Project, modifier: Modifier = Modifi
             val kfLocal = if (kfClip != null) (positionUs - kfClip.startUs).coerceIn(0, kfClip.durationUs) else 0L
             val kfPos = if (kfClip != null) kfLocal.toFloat() / kfClip.durationUs.coerceAtLeast(1) else 0f
             val kfHere = kfClip != null && (kfClip.keyframes.keys.any { kfClip.keyframeNear(it, kfLocal) != null } || kfClip.speedCurve.any { abs(it.pos - kfPos) < 0.02f })
-            if (!full) IconButton({
+            if (!full && vm.container.settings.flow.collectAsState().value.proMode) IconButton({
                 if (kfClip != null) vm.updateClip(R.string.hist_keyframe, kfClip.id) { k ->
                     val props = (listOf("x", "y", "scale", "rotation", "opacity", "brightness", "contrast", "saturation", "exposure", "temperature", "tint", "vibrance", "hue") +
                         (if (k.audible || k.kind == ClipKind.AUDIO) listOf("volume") else emptyList()) + k.keyframes.keys).distinct()
@@ -525,15 +584,6 @@ fun Transport(vm: EditorViewModel, project: Project, modifier: Modifier = Modifi
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton({ vm.loop.value = !loop; vm.player.setLoop(!loop) }, Modifier.size(36.dp)) {
-                Icon(Icons.Default.Repeat, stringResource(R.string.loop), tint = if (loop) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            IconButton({
-                // Ciclo: sin guías → cuadrícula → cuadrícula + zonas seguras → sin guías.
-                vm.container.settings.update { s -> if (!s.showGrid) s.copy(showGrid = true) else if (!s.showSafeZones) s.copy(showSafeZones = true) else s.copy(showGrid = false, showSafeZones = false) }
-            }, Modifier.size(36.dp)) {
-                Icon(Icons.Default.Grid4x4, stringResource(R.string.guides), tint = if (settings.showGrid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
-            }
             IconButton({ vm.fullscreen.value = !full }, Modifier.size(36.dp)) {
                 Icon(if (full) Icons.Default.FullscreenExit else Icons.Default.Fullscreen, stringResource(R.string.fullscreen))
             }

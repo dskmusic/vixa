@@ -1548,4 +1548,19 @@
     <string name="vixa_share_hint">With media, the videos, photos and sounds travel inside the file and the project opens on any device. \"Project only\" keeps just the edit: on another phone the media will be missing.</string>
     <string name="export_phase_finishing">Finishing the file so it plays on TVs and other devices… this can take a moment, it hasn\'t frozen.</string>
     <string name="export_phase_gif">Creating the GIF… this can take a moment, it hasn\'t frozen.</string>
+    <string name="go_to_start">Go to start</string>
+    <string name="go_to_end">Go to end</string>
+    <string name="stk_draw_path">Draw a path</string>
+    <string name="stk_path_hint">Draw with your finger where it moves</string>
+    <string name="stk_path_done">Done ✓</string>
+    <string name="stk_path_remove">Remove path</string>
+    <string name="rescale_ask_title">Adjust the movement?</string>
+    <string name="rescale_ask_body">You changed the duration. Do you want the movement to stretch or shrink so it still fills the whole time?</string>
+    <string name="rescale_yes">Yes, adjust</string>
+    <string name="rescale_no">No, keep it</string>
+    <string name="easy_move">Move</string>
+    <string name="easy_light">Light</string>
+    <string name="easy_detail">Detail</string>
+    <string name="easy_fades">Fades</string>
+    <string name="stk_act_path">Path</string>
 </resources>

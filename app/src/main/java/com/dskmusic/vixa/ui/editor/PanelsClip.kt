@@ -1,5 +1,18 @@
 package com.dskmusic.vixa.ui.editor
 
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.OpenInFull
+import androidx.compose.material.icons.filled.RotateRight
+import androidx.compose.material.icons.filled.OpenWith
+import androidx.compose.material.icons.automirrored.filled.Login
+import androidx.compose.material.icons.filled.Loop
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Gesture
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.background
@@ -196,8 +209,29 @@ fun SpeedPanel(vm: EditorViewModel, c: Clip) {
 
 @Composable
 fun VolumePanel(vm: EditorViewModel, c: Clip) {
-    PropSlider(vm, c, "volume", stringResource(R.string.volume), R.string.hist_volume, 0f..2f, 1f)
     val maxFade = (c.durationUs / 2_000_000f).coerceAtLeast(0.1f)
+    // Modo Fácil: Volumen / Fundidos / Más, uno a la vez.
+    if (easyMode(vm)) {
+        var sub by remember { mutableStateOf("vol") }
+        EasyBar(listOf(EasyTab("vol", Icons.AutoMirrored.Filled.VolumeUp, R.string.volume), EasyTab("fade", Icons.Default.GraphicEq, R.string.easy_fades), EasyTab("more", Icons.Default.MoreHoriz, R.string.more)), sub) { sub = it }
+        when (sub) {
+            "vol" -> {
+                PropSlider(vm, c, "volume", stringResource(R.string.volume), R.string.hist_volume, 0f..2f, 1f)
+                SwitchRow(stringResource(R.string.mute), c.muted) { on -> vm.updateClip(R.string.hist_volume, c.id) { it.copy(muted = on) } }
+            }
+            "fade" -> {
+                PreciseSlider(stringResource(R.string.fade_in), c.fadeInUs / 1_000_000f, { v -> vm.updateClip(R.string.hist_volume, c.id, live = true) { it.copy(fadeInUs = (v * 1_000_000f).toLong()) } },
+                    range = 0f..minOf(10f, maxFade), onFinished = { vm.commit() }, format = ::secs, inputScale = 1f)
+                PreciseSlider(stringResource(R.string.fade_out), c.fadeOutUs / 1_000_000f, { v -> vm.updateClip(R.string.hist_volume, c.id, live = true) { it.copy(fadeOutUs = (v * 1_000_000f).toLong()) } },
+                    range = 0f..minOf(10f, maxFade), onFinished = { vm.commit() }, format = ::secs, inputScale = 1f)
+            }
+            else -> if (c.kind == ClipKind.VIDEO && c.media?.hasAudio == true && !c.audioDetached) {
+                OutlinedButton({ vm.edit(R.string.hist_detach) { it.detachAudio(c.id) } }, Modifier.padding(horizontal = 16.dp)) { Text(stringResource(R.string.detach_audio)) }
+            } else Text("–", Modifier.padding(16.dp))
+        }
+        return
+    }
+    PropSlider(vm, c, "volume", stringResource(R.string.volume), R.string.hist_volume, 0f..2f, 1f)
     PreciseSlider(stringResource(R.string.fade_in), c.fadeInUs / 1_000_000f, { v -> vm.updateClip(R.string.hist_volume, c.id, live = true) { it.copy(fadeInUs = (v * 1_000_000f).toLong()) } },
         range = 0f..minOf(10f, maxFade), onFinished = { vm.commit() }, format = ::secs, inputScale = 1f)
     PreciseSlider(stringResource(R.string.fade_out), c.fadeOutUs / 1_000_000f, { v -> vm.updateClip(R.string.hist_volume, c.id, live = true) { it.copy(fadeOutUs = (v * 1_000_000f).toLong()) } },
@@ -211,6 +245,40 @@ fun VolumePanel(vm: EditorViewModel, c: Clip) {
 @Composable
 fun TransformPanel(vm: EditorViewModel, c: Clip) {
     val tr = c.transform
+    // Modo Fácil: Tamaño / Girar / Mover / Camino, uno a la vez.
+    if (easyMode(vm)) {
+        var sub by remember { mutableStateOf("size") }
+        var drawingPath by remember { mutableStateOf(false) }
+        val hasPath = !c.keyframes["x"].isNullOrEmpty() && !c.keyframes["y"].isNullOrEmpty()
+        EasyBar(
+            listOf(
+                EasyTab("size", Icons.Default.OpenInFull, R.string.size), EasyTab("turn", Icons.Default.RotateRight, R.string.rotation),
+                EasyTab("move", Icons.Default.OpenWith, R.string.easy_move), EasyTab("path", Icons.Default.Gesture, R.string.stk_act_path, hasPath),
+            ),
+            sub,
+        ) { k -> if (k == "path") drawingPath = true else sub = k }
+        when (sub) {
+            "size" -> {
+                PropSlider(vm, c, "scale", stringResource(R.string.scale), R.string.hist_transform, 0.05f..5f, 1f)
+                PropSlider(vm, c, "opacity", stringResource(R.string.opacity), R.string.hist_transform, 0f..1f, 1f)
+            }
+            "turn" -> {
+                PropSlider(vm, c, "rotation", stringResource(R.string.rotation), R.string.hist_transform, -180f..180f, 0f, { String.format(Locale.US, "%.0f°", it) }, 1f)
+                Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(tr.flipH, { vm.updateClip(R.string.hist_transform, c.id) { it.copy(transform = it.transform.copy(flipH = !tr.flipH)) } }, { Text(stringResource(R.string.flip_h)) })
+                    FilterChip(tr.flipV, { vm.updateClip(R.string.hist_transform, c.id) { it.copy(transform = it.transform.copy(flipV = !tr.flipV)) } }, { Text(stringResource(R.string.flip_v)) })
+                    AssistChip({ vm.updateClip(R.string.hist_transform, c.id) { it.copy(transform = it.transform.copy(rotation = ((it.transform.rotation + 90f + 180f) % 360f) - 180f)) } }, { Text("+90°") })
+                }
+            }
+            else -> {
+                PropSlider(vm, c, "x", stringResource(R.string.position_x), R.string.hist_transform, -1f..1f, 0f)
+                PropSlider(vm, c, "y", stringResource(R.string.position_y), R.string.hist_transform, -1f..1f, 0f)
+            }
+        }
+        AssistChip({ vm.updateClip(R.string.hist_transform, c.id) { it.copy(transform = Transform(fit = it.transform.fit), keyframes = it.keyframes - setOf("x", "y", "scale", "rotation", "opacity")) } }, { Text(stringResource(R.string.reset)) }, Modifier.padding(horizontal = 12.dp))
+        if (drawingPath) DrawPathDialog(vm, c) { drawingPath = false }
+        return
+    }
     PropSlider(vm, c, "scale", stringResource(R.string.scale), R.string.hist_transform, 0.05f..5f, 1f)
     PropSlider(vm, c, "rotation", stringResource(R.string.rotation), R.string.hist_transform, -180f..180f, 0f, { String.format(Locale.US, "%.0f°", it) }, 1f)
     PropSlider(vm, c, "x", stringResource(R.string.position_x), R.string.hist_transform, -1f..1f, 0f)
@@ -268,9 +336,26 @@ fun CropPanel(vm: EditorViewModel, c: Clip) {
 @Composable
 fun AnimationPanel(vm: EditorViewModel, c: Clip) {
     var tab by remember { mutableIntStateOf(0) }
+    // Dibujar camino: vale para cualquier elemento que se pueda animar (texto, pegatina, capa de medios...).
+    var drawingPath by remember { mutableStateOf(false) }
+    val hasPath = !c.keyframes["x"].isNullOrEmpty() && !c.keyframes["y"].isNullOrEmpty()
+    val easy = easyMode(vm)
+    // Modo Fácil: botones grandes Entrada / Bucle / Salida / Camino. Pro: pestañas y chips.
+    if (easy) EasyBar(
+        listOf(
+            EasyTab("0", Icons.AutoMirrored.Filled.Login, R.string.anim_in, c.animIn != null), EasyTab("2", Icons.Default.Loop, R.string.anim_loop, c.animLoop != null),
+            EasyTab("1", Icons.AutoMirrored.Filled.Logout, R.string.anim_out, c.animOut != null), EasyTab("path", Icons.Default.Gesture, R.string.stk_act_path, hasPath),
+        ),
+        tab.toString(),
+    ) { k -> if (k == "path") drawingPath = true else tab = k.toInt() }
+    else Row(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        AssistChip({ drawingPath = true }, { Text(stringResource(R.string.stk_draw_path)) }, leadingIcon = { Icon(androidx.compose.material.icons.Icons.Default.Gesture, null) })
+        if (hasPath) AssistChip({ vm.updateClip(R.string.hist_animation, c.id) { it.copy(keyframes = it.keyframes - setOf("x", "y")) } }, { Text(stringResource(R.string.stk_path_remove)) }, leadingIcon = { Icon(androidx.compose.material.icons.Icons.Default.Close, null) })
+    }
+    if (drawingPath) DrawPathDialog(vm, c) { drawingPath = false }
     val kinds = listOf(AnimKind.IN, AnimKind.OUT, AnimKind.LOOP)
     val labels = listOf(R.string.anim_in, R.string.anim_out, R.string.anim_loop)
-    Row(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    if (!easy) Row(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         for (i in 0..2) FilterChip(tab == i, { tab = i }, { Text(stringResource(labels[i])) })
     }
     val kind = kinds[tab]
@@ -354,6 +439,20 @@ fun AdjustPanel(vm: EditorViewModel, c: Clip) {
         Triple("sharpen", R.string.adj_sharpen, 0f..1f), Triple("vignette", R.string.adj_vignette, 0f..1f),
         Triple("grain", R.string.adj_grain, 0f..1f),
     )
+    // Modo Fácil: Luz / Color / Detalle (las curvas son solo del modo Pro).
+    if (easyMode(vm)) {
+        var sub by remember { mutableStateOf("light") }
+        EasyBar(listOf(EasyTab("light", Icons.Default.WbSunny, R.string.easy_light), EasyTab("color", Icons.Default.Palette, R.string.color), EasyTab("detail", Icons.Default.Tune, R.string.easy_detail)), sub) { sub = it }
+        val keys = when (sub) {
+            "light" -> setOf("exposure", "brightness", "contrast", "highlights", "shadows")
+            "color" -> setOf("saturation", "vibrance", "temperature", "tint", "hue")
+            else -> setOf("lightness", "fade", "sharpen", "vignette", "grain")
+        }
+        for ((prop, name, range) in rows) if (prop in keys) PropSlider(vm, c, prop, stringResource(name), h, range, 0f)
+        TextButton({ vm.updateClip(h, c.id) { it.copy(color = ColorAdjust(), keyframes = it.keyframes.filterKeys { k -> k.startsWith("fx:") || k in setOf("x", "y", "scale", "rotation", "opacity", "volume") || k.startsWith("mask.") || zoneKeyIndex(k) >= 0 }) } },
+            Modifier.padding(horizontal = 8.dp)) { Text(stringResource(R.string.reset_all)) }
+        return
+    }
     for ((prop, name, range) in rows) PropSlider(vm, c, prop, stringResource(name), h, range, 0f)
     SectionTitle(stringResource(R.string.curves))
     var ch by remember { mutableIntStateOf(0) }

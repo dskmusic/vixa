@@ -141,6 +141,7 @@ fun Timeline(vm: EditorViewModel, project: Project, modifier: Modifier = Modifie
     val positionUs by vm.player.positionUs.collectAsState()
     val zoomDp by vm.zoom.collectAsState()
     val selection by vm.selection.collectAsState()
+    val proMode = vm.container.settings.flow.collectAsState().value.proMode
     val thumbTick by Thumbs.tick.collectAsState()
     val waveTick by Waveforms.tick.collectAsState()
     var scrollY by remember { mutableFloatStateOf(0f) }
@@ -634,7 +635,8 @@ fun Timeline(vm: EditorViewModel, project: Project, modifier: Modifier = Modifie
                         nc.drawText("🔇", cx0 + 4 * dp, rect.bottom - 4 * dp, textPaint)
                     }
                     // Keyframes del clip seleccionado.
-                    if (selected && c.keyframes.isNotEmpty()) {
+                    // (los rombos solo se ven en modo Pro)
+                    if (selected && c.keyframes.isNotEmpty() && proMode) {
                         fillPaint.color = 0xFFFFD60A.toInt()
                         for (list in c.keyframes.values) for (k in list) {
                             val kx = xOf(c.startUs + k.tUs)

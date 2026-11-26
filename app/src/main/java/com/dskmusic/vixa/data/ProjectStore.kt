@@ -50,6 +50,14 @@ class SnapshotInfo(val file: File, val label: String, val timeMs: Long)
  */
 class ProjectStore(private val context: Context) {
     private val root = File(context.filesDir, "projects").apply { mkdirs() }
+
+    // Cambia cada vez que se guarda un proyecto: la pantalla de inicio se refresca sola (p. ej. cuando el editor termina
+    // de guardar en segundo plano después de volver, o tras renombrar).
+    private val _changes = kotlinx.coroutines.flow.MutableStateFlow(0)
+    val changes: kotlinx.coroutines.flow.StateFlow<Int> = _changes
+
+    // Los guardados van de uno en uno: uno antiguo no puede terminar después de uno nuevo y pisarlo.
+    private val saveLock = kotlinx.coroutines.sync.Mutex()
     private val templatesDir = File(context.filesDir, "text_templates").apply { mkdirs() }
 
     private fun dir(id: String) = File(root, id)
@@ -138,6 +146,11 @@ class ProjectStore(private val context: Context) {
 
     /** Guardado atómico (archivo temporal + renombrado) para no dejar nunca un project.json a medias. */
     suspend fun save(project: Project, updateThumb: Boolean = false, thumb: Bitmap? = null): Project = withContext(Dispatchers.IO) {
+        saveLock.lock()
+        try { saveLocked(project, updateThumb, thumb) } finally { saveLock.unlock(); _changes.value++ }
+    }
+
+    private fun saveLocked(project: Project, updateThumb: Boolean, thumb: Bitmap?): Project {
         val p = project.copy(modifiedAt = System.currentTimeMillis())
         val d = dir(p.id).apply { mkdirs() }
         val tmp = File(d, "project.json.tmp")
@@ -146,9 +159,9 @@ class ProjectStore(private val context: Context) {
         if (!tmp.renameTo(target)) { tmp.copyTo(target, overwrite = true); tmp.delete() }
         File(d, "meta.json").writeText(VixaJson.encodeToString(ProjectInfo.serializer(), info(p)))
         // Con un fotograma de la vista previa (si no es oscuro) se usa ese; si no, el primer medio del proyecto.
-        if (updateThumb && thumb != null && !isDark(thumb)) writeThumb(p.id, thumb)
+        if (updateThumb && thumb != null && !isDark(thumb)) { writeThumb(p.id, thumb); try { realMarker(p.id).createNewFile() } catch (e: Throwable) {} }
         else if (updateThumb || !thumbFile(p.id).exists()) makeThumb(p)
-        p
+        return p
     }
 
     /** Brillo medio (muestreado) por debajo del que una imagen se considera negra. */
@@ -238,14 +251,54 @@ class ProjectStore(private val context: Context) {
         Unit
     }
 
-    suspend fun rename(id: String, name: String) {
-        val p = load(id) ?: return
-        save(p.copy(name = name))
+    /** Cambia el nombre de un proyecto guardado. Devuelve false si no se pudo (queda en el registro de errores). */
+    suspend fun rename(id: String, name: String): Boolean = try {
+        val n = name.trim()
+        val p = load(id) ?: throw IllegalStateException("no se puede cargar el proyecto $id")
+        if (p.name != n) save(p.copy(name = n))
+        // El historial guardado lleva el nombre anterior en cada paso: se actualiza para que al abrir no vuelva.
+        loadHistory(id)?.let { (list, idx) -> saveHistory(id, list.map { it.copy(project = it.project.copy(name = n)) }, idx) }
+        true
+    } catch (e: Throwable) {
+        if (e is kotlinx.coroutines.CancellationException) throw e
+        ErrorLog.log("ProjectStore/rename $id", e)
+        false
     }
 
     suspend fun duplicate(id: String, suffix: String): Project? {
         val p = load(id) ?: return null
         return save(p.copy(id = newId(), name = p.name + " " + suffix, createdAt = System.currentTimeMillis()), updateThumb = true)
+    }
+
+    /** Existe si la miniatura es un fotograma real de la vista previa (no la portada dibujada). */
+    private fun realMarker(id: String) = File(dir(id), "thumb.real")
+
+    /** Portada para proyectos sin vídeo ni fotos: degradado del fondo con el primer texto y el primer emoji. */
+    private fun placeholderThumb(p: Project): Bitmap {
+        val ar = if (p.height > 0) p.width.toFloat() / p.height else 16f / 9f
+        val w = if (ar >= 1f) 360 else (360 * ar).toInt().coerceAtLeast(120)
+        val h = if (ar >= 1f) (360 / ar).toInt().coerceAtLeast(120) else 360
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val cv = android.graphics.Canvas(bmp)
+        val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+        val col = p.allClips().firstOrNull { it.kind == com.dskmusic.vixa.model.ClipKind.COLOR && !it.gap }?.fill?.colors
+        val c0 = col?.firstOrNull() ?: 0xFF1E3A5F.toInt()
+        val c1 = col?.getOrNull(1) ?: if (col == null) 0xFF0A84FF.toInt() else c0
+        paint.shader = android.graphics.LinearGradient(0f, 0f, w.toFloat(), h.toFloat(), c0, c1, android.graphics.Shader.TileMode.CLAMP)
+        cv.drawRect(0f, 0f, w.toFloat(), h.toFloat(), paint)
+        paint.shader = null
+        paint.textAlign = android.graphics.Paint.Align.CENTER
+        val sticker = p.allClips().firstOrNull { it.kind == com.dskmusic.vixa.model.ClipKind.STICKER && it.sticker?.type == com.dskmusic.vixa.model.StickerType.EMOJI }?.sticker?.value
+        if (!sticker.isNullOrEmpty()) { paint.textSize = h * 0.4f; cv.drawText(sticker, w / 2f, h * 0.55f, paint) }
+        val text = p.allClips().firstOrNull { it.kind == com.dskmusic.vixa.model.ClipKind.TEXT }?.text?.layers?.firstOrNull { it.text.isNotBlank() }?.text
+        if (!text.isNullOrBlank()) {
+            paint.color = 0xFFFFFFFF.toInt()
+            paint.typeface = android.graphics.Typeface.DEFAULT_BOLD
+            paint.textSize = h * 0.13f
+            paint.setShadowLayer(6f, 0f, 2f, 0x99000000.toInt())
+            cv.drawText(text.lineSequence().first().take(18), w / 2f, h * 0.82f, paint)
+        }
+        return bmp
     }
 
     private fun makeThumb(p: Project) {
@@ -273,7 +326,12 @@ class ProjectStore(private val context: Context) {
                     } finally { r.release() }
                 }
             }
-            if (bmp == null) { thumbFile(p.id).delete(); return }
+            if (bmp == null) {
+                // Sin medios (solo textos, emojis, stickers o color): si ya hay un fotograma real de la vista previa se conserva; si no, una portada dibujada.
+                if (!(thumbFile(p.id).exists() && realMarker(p.id).exists())) writeThumb(p.id, placeholderThumb(p))
+                return
+            }
+            realMarker(p.id).delete()
             writeThumb(p.id, bmp)
         } catch (e: Throwable) {
             ErrorLog.log("ProjectStore/thumb", e)

@@ -234,7 +234,28 @@ With {icon:Fullscreen} the preview takes the whole screen **just for watching**:
 
 ---
 
+## Pro mode and Normal mode
+
+At the top of the editor there is a **Pro** button. It comes **on** and shows every tool. If you turn it **off** you switch to **Normal mode**: only the main tools are shown and the animation diamonds (keyframes) on the timeline are hidden. The app **remembers your choice**: new projects open in the mode you left it in.
+
+## Draw a path for any element
+
+On any element that can be animated (text, sticker, photo, overlay video…) open **Animate** and tap **Draw a path**. You will see your video behind: draw with your finger where it should move and tap **Done ✓**. The position keyframes are created for you. To remove it tap **Remove path**.
+
+If you later change the element's **duration** (for example, you make it longer):
+
+- In **Pro mode** the app **asks** whether to adjust the movement to the new duration or leave it as is.
+- In **Normal mode** it **adjusts it directly**, without asking.
+
+## Split the screen between preview and timeline
+
+**Hold for 1 second** the transport bar (the one with the clock and the play button, on a gap between buttons; look for the small handle at the top) and drag it **up or down**: the preview grows and the timeline shrinks, or the other way around. **Double tap** the bar and everything goes back to normal.
+
+---
+
 # {icon:Add} 4. Adding media
+
+When you tap **Download and insert** on an **Online** tab, the item is **inserted right away** (together with anything you had already ticked), without going through the button at the top.
 
 Tap {icon:Add} **Add media** (or the timeline **+** button). The picker opens with three tabs:
 

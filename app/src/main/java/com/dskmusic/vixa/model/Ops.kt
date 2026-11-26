@@ -863,3 +863,36 @@ fun Project.allPaths(): Set<String> {
     mapPaths { out.add(it); it }
     return out
 }
+
+/**
+ * Si un clip cambia de duración (recorte, estiramiento, velocidad) sin que se hayan tocado sus fotogramas clave,
+ * los reparte en la misma proporción: un movimiento de 3 s que pasa a 6 s sigue ocupando todo el clip.
+ */
+fun Project.rescaleKeyframes(old: Project): Project {
+    var p = this
+    for ((id, oldDur) in keyframeDurationChanges(old)) p = p.rescaleClipKeyframes(id, oldDur)
+    return p
+}
+
+/** Clips que han cambiado de duración sin tocar sus fotogramas clave: (id, duración anterior). Vacío si cambia el número de clips. */
+fun Project.keyframeDurationChanges(old: Project): List<Pair<String, Long>> {
+    if (allClips().size != old.allClips().size) return emptyList()
+    val before = old.allClips().associateBy { it.id }
+    val out = ArrayList<Pair<String, Long>>()
+    for (c in allClips()) {
+        if (c.keyframes.isEmpty()) continue
+        val o = before[c.id] ?: continue
+        if (o.durationUs == c.durationUs || o.durationUs <= 0L || o.keyframes != c.keyframes) continue
+        out.add(c.id to o.durationUs)
+    }
+    return out
+}
+
+/** Reparte los fotogramas clave del clip en proporción a su duración actual respecto a [oldDur]. */
+fun Project.rescaleClipKeyframes(id: String, oldDur: Long): Project {
+    val c = clip(id) ?: return this
+    if (oldDur <= 0L || c.durationUs == oldDur || c.keyframes.isEmpty()) return this
+    val k = c.durationUs.toDouble() / oldDur
+    val max = c.durationUs
+    return updateClip(id) { cl -> cl.copy(keyframes = cl.keyframes.mapValues { (_, l) -> l.map { it.copy(tUs = (it.tUs * k).toLong().coerceIn(0L, max)) } }) }
+}

@@ -46,6 +46,7 @@ spectacular video in a minute and still be able to tweak absolutely everything.
 
 - 🪄 **Video assistant**: pick your media, a style (there are **27**) and the music. Vixa detects the beat, cuts on it and adds transitions, camera moves, color, effects, a title and an outro. The result is a regular project that opens in the editor.
 - 🎞️ **Full multitrack editor**: timeline with video, overlays, audio, text, stickers and adjustment layers.
+- 🎛️ **Pro / Normal mode**: a button in the editor shows or hides the advanced tools (on by default; remembered). With **Draw a path** any animatable element follows your finger's stroke, and the transport bar can be dragged to split the screen between preview and timeline.
 - 🌈 **Loads of content**: **85 transitions**, **180+ effects** (custom shaders), **100+ filters** and LUTs, **150+ animated text templates**, **120 vector shapes** and emojis.
 - 🤖 **On-device AI**: automatic subtitles, background removal without chroma key, object tracking, voice enhancement and separation… all local, after a one-time model download.
 - 🎚️ **Audio**: equalizer, voice changer, noise reduction, automatic music ducking, voice-over.

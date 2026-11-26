@@ -36,6 +36,8 @@ data class AppSettings(
     val transitionDurationMs: Int = 500,
     val snap: Boolean = true,
     val haptics: Boolean = true,
+    /** Modo Pro del editor (todas las herramientas). Activado por defecto; si se apaga se recuerda en los proyectos nuevos. */
+    val proMode: Boolean = true,
     val autosave: Boolean = true,
     val previewSide: Int = 540,
     val useProxies: Boolean = true,

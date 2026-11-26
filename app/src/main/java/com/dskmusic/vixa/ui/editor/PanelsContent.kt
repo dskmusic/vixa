@@ -1,6 +1,11 @@
 @file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 package com.dskmusic.vixa.ui.editor
 
+import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.filled.FontDownload
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Animation
+import androidx.compose.material.icons.filled.Gesture
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.filled.Save
@@ -167,9 +172,23 @@ fun TextPanel(vm: EditorViewModel, project: Project, c: Clip, pick: (PickRequest
             }
         }
     }
-    Row(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    // Modo Fácil: botones grandes (Texto, Letra, Estilo, Animar, Camino). Pro: las pestañas de siempre.
+    val easy = easyMode(vm)
+    var drawingPath by remember { mutableStateOf(false) }
+    val hasPath = !c.keyframes["x"].isNullOrEmpty() && !c.keyframes["y"].isNullOrEmpty()
+    if (easy) EasyBar(
+        listOf(
+            EasyTab("0", Icons.Default.TextFields, R.string.text_content), EasyTab("1", Icons.Default.FontDownload, R.string.text_font),
+            EasyTab("2", Icons.Default.Palette, R.string.text_style), EasyTab("3", Icons.Default.Animation, R.string.animation),
+            EasyTab("path", Icons.Default.Gesture, R.string.stk_act_path, hasPath),
+        ),
+        tab.toString(),
+    ) { k -> if (k == "path") drawingPath = true else tab = k.toInt() }
+    else Row(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         for ((i, r) in listOf(R.string.text_content, R.string.text_font, R.string.text_style, R.string.animation).withIndex()) FilterChip(tab == i, { tab = i }, { Text(stringResource(r)) })
+        AssistChip({ drawingPath = true }, { Text(stringResource(R.string.stk_draw_path)) })
     }
+    if (drawingPath) DrawPathDialog(vm, c) { drawingPath = false }
     when (tab) {
         0 -> {
             if (layer.kind == LayerKind.TEXT) {
@@ -791,7 +810,7 @@ fun ProjectPanel(vm: EditorViewModel, project: Project, pick: (PickRequest) -> U
         PreciseSlider(stringResource(R.string.opacity), wm.opacity, { v -> vm.edit(h, live = true) { it.copy(watermark = it.watermark.copy(opacity = v)) } }, range = 0f..1f, default = 0.7f, onFinished = { vm.commit() })
     }
     when (dialog) {
-        "rename" -> TextInputDialog(stringResource(R.string.rename), project.name, { dialog = "" }) { n -> vm.edit(R.string.hist_rename) { it.copy(name = n) }; dialog = "" }
+        "rename" -> TextInputDialog(stringResource(R.string.rename), project.name, { dialog = "" }) { n -> vm.rename(n); dialog = "" }
         "saveas" -> TextInputDialog(stringResource(R.string.save_as), project.name + " 2", { dialog = "" }) { n -> vm.saveAs(n, onOpenProject); dialog = "" }
         "template" -> TextInputDialog(stringResource(R.string.save_project_template), project.name, { dialog = "" }) { n -> vm.saveAsTemplate(n); dialog = "" }
         "snapshot" -> TextInputDialog(stringResource(R.string.new_snapshot), "", { dialog = "" }) { n -> vm.saveSnapshot(n); dialog = ""; reload++ }
