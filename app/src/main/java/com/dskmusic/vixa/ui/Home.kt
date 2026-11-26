@@ -149,6 +149,7 @@ fun HomeScreen(
     var sort by remember { mutableIntStateOf(0) }
     var creating by remember { mutableStateOf(false) }
     var showAll by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { try { container.projects.refreshThumbs() } catch (e: Throwable) { ErrorLog.log("Home/thumbs", e) } }
     var opening by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -306,8 +307,8 @@ fun HomeScreen(
                     }
                 }
                 item(span = { GridItemSpan(maxLineSpan) }) {
-                    Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(R.string.projects_title), Modifier.weight(1f).padding(start = 4.dp), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Row(Modifier.fillMaxWidth().padding(top = 18.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.projects_title), Modifier.weight(1f).padding(start = 4.dp), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         // Siempre visible: desde el gestor se llega a la papelera aunque no quede ningún proyecto.
                         TextButton({ showAll = true }) { Text(stringResource(R.string.view_all)) }
                     }
@@ -499,7 +500,7 @@ private fun ProjectCard(container: AppContainer, info: ProjectInfo, onOpen: (Str
     // Nombre que se ve en la tarjeta: cambia al instante al renombrar, sin esperar a que se relea la lista.
     var shownName by remember(info.id, info.name) { mutableStateOf(info.name) }
     val thumb = container.projects.thumbFile(info.id)
-    Column(Modifier.clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.surfaceContainer).clickable {
+    Column(Modifier.clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.surfaceContainer).clickable {
         if (info.isTemplate) scope.launch { container.projects.duplicate(info.id, "")?.let { copy -> container.projects.save(copy.copy(isTemplate = false, name = info.name)); onOpen(copy.id) } } else onOpen(info.id)
     }) {
         Box(Modifier.fillMaxWidth().aspectRatio(thumbAspect).background(Color(0xFF15151C))) {
@@ -511,10 +512,10 @@ private fun ProjectCard(container: AppContainer, info: ProjectInfo, onOpen: (Str
         Row(Modifier.padding(start = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f).padding(vertical = 6.dp)) {
                 Text(shownName.ifBlank { stringResource(R.string.untitled) }, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                Text(DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(info.modifiedAt)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(info.modifiedAt)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
             }
             Box {
-                IconButton({ menu = true }) { Icon(Icons.Default.MoreVert, stringResource(R.string.more)) }
+                IconButton({ menu = true }) { Icon(Icons.Default.MoreVert, stringResource(R.string.more), Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)) }
                 DropdownMenu(menu, { menu = false }) {
                     DropdownMenuItem({ Text(stringResource(R.string.rename)) }, { menu = false; if (onRename != null) onRename(info.copy(name = shownName)) else dialog = "rename" })
                     DropdownMenuItem({ Text(stringResource(R.string.duplicate)) }, { menu = false; scope.launch { container.projects.duplicate(info.id, context.getString(R.string.copy_suffix)); onChanged() } })

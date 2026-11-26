@@ -334,9 +334,9 @@ fun AnimationPanel(vm: EditorViewModel, c: Clip) {
     val animProg = rememberLoopProgress()
     val favs = rememberFavs()
     TileGrid(Modifier.padding(vertical = 6.dp)) { tile ->
-        PreviewTile(stringResource(R.string.none), cur == null, { set(null) }, tile.height(68.dp)) { Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerHighest)) }
+        PreviewTile(stringResource(R.string.none), cur == null, { set(null) }, tile.height(tileH())) { Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerHighest)) }
         for (a in Anims.list(kind, c.kind == ClipKind.TEXT).favFirst(favs) { "an:$kind:${it.id}" }) {
-            AnimTile(a, kind, stringResource(a.nameRes), cur?.id == a.id, animProg, tile.height(68.dp), favKey = "an:$kind:${a.id}") {
+            AnimTile(a, kind, stringResource(a.nameRes), cur?.id == a.id, animProg, tile.height(tileH()), favKey = "an:$kind:${a.id}") {
                 set(AnimRef(a.id, cur?.durationUs ?: 500_000L))
                 vm.player.playFrom(if (kind == AnimKind.OUT) c.endUs - (cur?.durationUs ?: 500_000L) else c.startUs)
             }
@@ -471,7 +471,7 @@ fun EffectsPanel(vm: EditorViewModel, c: Clip) {
             val list = Registry.effects.filter { it.catRes == cat }.favFirst(rememberFavs()) { "fx:${it.id}" }
             for (d in list) {
                 // Al elegirlo se aplica al clip y la vista previa del editor lo muestra al instante.
-                FxTile(d, stringResource(d.nameRes), c.effects.any { it.defId == d.id }, tile.height(68.dp), favKey = "fx:${d.id}") {
+                FxTile(d, stringResource(d.nameRes), c.effects.any { it.defId == d.id }, tile.height(tileH()), favKey = "fx:${d.id}") {
                     vm.updateClip(h, c.id) { it.copy(effects = it.effects + EffectInstance(defId = d.id)) }
                     adding = false
                 }
@@ -492,11 +492,11 @@ fun TransitionPanel(vm: EditorViewModel, c: Clip, isFirst: Boolean) {
     androidx.compose.runtime.LaunchedEffect(Unit) { com.dskmusic.vixa.engine.FxThumbs.validateRegistry() }
     ChipRow(cats, cat, { stringResource(it) }) { cat = it }
     TileGrid(Modifier.padding(vertical = 6.dp)) { tile ->
-        PreviewTile(stringResource(R.string.none), c.transitionIn == null, { vm.updateClip(h, c.id) { it.copy(transitionIn = null) } }, tile.height(68.dp)) {
+        PreviewTile(stringResource(R.string.none), c.transitionIn == null, { vm.updateClip(h, c.id) { it.copy(transitionIn = null) } }, tile.height(tileH())) {
             Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerHighest))
         }
         for (t in Registry.transitions.filter { it.catRes == cat }.favFirst(rememberFavs()) { "tr:${it.id}" }) {
-            TransitionTile(t.id, stringResource(t.nameRes), c.transitionIn?.id == t.id, prog, tile.height(68.dp), favKey = "tr:${t.id}") {
+            TransitionTile(t.id, stringResource(t.nameRes), c.transitionIn?.id == t.id, prog, tile.height(tileH()), favKey = "tr:${t.id}") {
                 vm.updateClip(h, c.id) { it.copy(transitionIn = Transition(t.id, it.transitionIn?.durationUs ?: defDur)) }
                 // Vista previa inmediata de la transición.
                 vm.project.value?.clip(c.id)?.let { n -> vm.player.playFrom((n.startUs - 400_000L).coerceAtLeast(0)) }

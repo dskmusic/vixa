@@ -527,9 +527,95 @@ object Templates {
             box(0.3f, 0.003f, GLD, y = 0.09f, inA = a("curtain", 900), delay = 150)) })
         add(TextTemplate("outro_wave", cx3) { es -> listOf(
             t(s(es, "¡Nos vemos!", "See ya!"), "poppins_bold", 0.12f, CYA, inA = a("letter_drop", 800), loop = a("wave"), shadow = 0.08f)) })
+        // ---------------- Tendencia (estilo vídeos cortos) ----------------
+        val cTrend = R.string.tcat_trend
+        add(TextTemplate("trend_pov", cTrend, 3500, y = -0.3f) { es -> listOf(
+            t(s(es, "POV: tu mejor día", "POV: your best day"), "poppins_bold", 0.06f, inA = a("pop", 400), stroke = 0.12f)) })
+        add(TextTemplate("trend_caption", cTrend, 4000, y = 0.26f) { es -> listOf(
+            t(s(es, "esto es lo que pasó", "here is what happened"), "montserrat_black", 0.048f, bg = DIM, inA = a("slide_up", 350), bgRadius = 0.3f, bgPad = 0.4f)) })
+        add(TextTemplate("trend_wait", cTrend, 3500, y = -0.32f) { es -> listOf(
+            t(s(es, "ESPERA AL FINAL 👀", "WAIT FOR THE END 👀"), "bangers", 0.085f, YEL, inA = a("pop", 400), stroke = 0.1f, loop = a("wobble"))) })
+        add(TextTemplate("trend_storytime", cTrend, 3500) { es -> listOf(
+            t("STORYTIME", "luckiest_guy", 0.13f, gradient = listOf(PNK, ORG), inA = a("slam", 450), stroke = 0.09f, rot = -4f)) })
+        add(TextTemplate("trend_noway", cTrend, 3000) { es -> listOf(
+            t(s(es, "¡NO PUEDE SER!", "NO WAY!!"), "anton", 0.12f, inA = a("glitch_in", 500), loop = a("glitch_loop"), shadow = 0.12f).copy(shadowColor = CYA, shadowDx = 0.02f, shadowDy = 0f)) })
+        add(TextTemplate("trend_day", cTrend, 4000, y = -0.32f) { es -> listOf(
+            t(s(es, "un día conmigo", "a day with me"), "permanent_marker", 0.075f, inA = a("typewriter", 1100), loop = a("float"), shadow = 0.05f)) })
+        add(TextTemplate("trend_y2k", cTrend, 4000) { es -> listOf(
+            t("y2k ✦", "righteous", 0.16f, gradient = listOf(CYA, PUR, PNK), inA = a("zoom_in", 500), loop = a("jelly_loop"), stroke = 0.05f, strokeColor = W)) })
+        add(TextTemplate("trend_aesthetic", cTrend, 4500) { es -> listOf(
+            t("✦", "montserrat", 0.05f, y = -0.07f, inA = a("fade", 700), loop = a("breathe")),
+            t(s(es, "momentos bonitos", "pretty moments"), "montserrat", 0.04f, spacing = 0.6f, delay = 300, inA = a("soft_zoom", 1100))) })
+        add(TextTemplate("trend_rate", cTrend, 3000, x = 0.2f, y = -0.34f) { _ -> listOf(
+            t("10/10 ⭐", "luckiest_guy", 0.09f, YEL, inA = a("pop", 450), stroke = 0.1f, rot = 8f, loop = a("tada"))) })
+
+        // ---------------- Cuquis ----------------
+        val cCute = R.string.tcat_cute
+        add(TextTemplate("cute_hello", cCute, 3500) { es -> listOf(
+            t(s(es, "¡Hey!", "Heyyy!"), "chewy", 0.2f, PNK, inA = a("bounce", 600), stroke = 0.09f, strokeColor = W, loop = a("hop"))) })
+        add(TextTemplate("cute_bff", cCute, 4000) { es -> listOf(
+            t(s(es, "mejores amigos 🤝", "best friends 🤝"), "pacifico", 0.1f, gradient = listOf(PNK, PUR), inA = a("letter_pop", 800), loop = a("float"))) })
+        add(TextTemplate("cute_sparkle", cCute, 3500) { es -> listOf(
+            t(s(es, "✨ brillante ✨", "✨ sparkly ✨"), "chewy", 0.12f, YEL, inA = a("pop", 500), stroke = 0.08f, strokeColor = PUR, loop = a("breathe"))) })
+        add(TextTemplate("cute_rainbow", cCute, 4000) { es -> listOf(
+            t(s(es, "ARCOÍRIS", "RAINBOW"), "luckiest_guy", 0.15f, gradient = listOf(RED, ORG, YEL, GRN, BLU, PUR), inA = a("letter_drop", 800), stroke = 0.07f, strokeColor = W, loop = a("wave"))) })
+        add(TextTemplate("cute_bubble", cCute, 4000, y = 0.28f) { es -> listOf(
+            t(s(es, "me encanta 💗", "love it 💗"), "poppins_bold", 0.055f, 0xFF7A2E5C.toInt(), bg = 0xFFFFC1E3.toInt(), inA = a("pop", 450), loop = a("float"), bgRadius = 0.5f, bgPad = 0.5f)) })
+        add(TextTemplate("cute_diary", cCute, 5000, y = -0.3f) { es -> listOf(
+            t(s(es, "querido diario...", "dear diary..."), "caveat", 0.1f, inA = a("typewriter", 1400), shadow = 0.05f)) })
+        add(TextTemplate("cute_birthday", cCute, 4000) { es -> listOf(
+            t(s(es, "¡FELIZ CUMPLE!", "HAPPY BIRTHDAY!"), "luckiest_guy", 0.1f, gradient = listOf(PNK, YEL), inA = a("letter_bounce", 900), stroke = 0.08f, strokeColor = W, loop = a("beat"))) })
+        add(TextTemplate("trend_fyp", cTrend, 3500, y = 0.3f) { es -> listOf(
+            t(s(es, "para ti ✨", "for you ✨"), "poppins_bold", 0.05f, W, bg = PNK, inA = a("slide_up", 400), loop = a("pulse"), bgRadius = 0.5f, bgPad = 0.5f)) })
+        add(TextTemplate("trend_plot", cTrend, 3000) { es -> listOf(
+            t(s(es, "GIRO DE GUION", "PLOT TWIST"), "bangers", 0.12f, CYA, inA = a("slam", 400), stroke = 0.1f, loop = a("shake"), rot = -4f)) })
+        add(TextTemplate("trend_fit", cTrend, 3500, y = -0.3f) { es -> listOf(
+            t(s(es, "outfit del día ✔", "fit check ✔"), "montserrat_black", 0.06f, inA = a("letter_pop", 700), stroke = 0.1f)) })
+        add(TextTemplate("trend_slay", cTrend, 3500) { _ -> listOf(
+            t("SLAY 💅", "anton", 0.17f, gradient = listOf(PNK, PUR), inA = a("zoom_in", 450), loop = a("jelly_loop"), stroke = 0.04f, strokeColor = W)) })
+        add(TextTemplate("trend_vibes", cTrend, 4000, y = 0.28f) { _ -> listOf(
+            t("good vibes only", "caveat", 0.11f, 0xFFFFC1D6.toInt(), inA = a("letter_fade", 900), loop = a("float"), shadow = 0.06f)) })
+        add(TextTemplate("trend_main", cTrend, 4000) { es -> listOf(
+            t(s(es, "protagonista total", "main character energy"), "poppins_bold", 0.05f, K, bg = YEL, inA = a("slide_left", 400), bgRadius = 0.2f, bgPad = 0.4f, rot = -3f)) })
+        add(TextTemplate("trend_cap", cTrend, 3000, x = 0.18f, y = -0.34f) { es -> listOf(
+            t(s(es, "EN SERIO 🧢", "NO CAP 🧢"), "luckiest_guy", 0.08f, W, inA = a("pop", 400), stroke = 0.1f, rot = 8f, loop = a("wobble"))) })
+        add(TextTemplate("trend_tbt", cTrend, 4000, y = -0.32f) { es -> listOf(
+            t(s(es, "recuerdo del pasado", "throwback"), "space_mono_bold", 0.05f, inA = a("typewriter", 1200))) })
+        add(TextTemplate("trend_wait2", cTrend, 3500) { es -> listOf(
+            t(s(es, "espera...", "wait for it..."), "montserrat_black", 0.08f, inA = a("fade", 600), loop = a("blink"), spacing = 0.1f)) })
+        add(TextTemplate("trend_rank", cTrend, 3500) { _ -> listOf(
+            t("TOP 1", "anton", 0.2f, GLD, inA = a("bounce", 600), loop = a("tada"), stroke = 0.05f)) })
+        add(TextTemplate("trend_grwm", cTrend, 4000, y = -0.3f) { es -> listOf(
+            t("GRWM", "montserrat_black", 0.12f, inA = a("letter_rise", 700), spacing = 0.2f),
+            t(s(es, "prepárate conmigo", "get ready with me"), "poppins", 0.035f, y = 0.07f, delay = 400, inA = a("fade", 500))) })
+        add(TextTemplate("trend_asmr", cTrend, 3500) { _ -> listOf(
+            t("ASMR 🎧", "righteous", 0.14f, CYA, inA = a("flicker", 700), shadow = 0.2f, loop = a("neon_flicker")).copy(shadowColor = CYA, shadowDy = 0f)) })
+        add(TextTemplate("trend_nofilter", cTrend, 3500, y = 0.3f) { es -> listOf(
+            t(s(es, "sin filtro", "no filter"), "lobster", 0.1f, inA = a("zoom_in", 500), shadow = 0.08f)) })
+        add(TextTemplate("trend_lol", cTrend, 3000, y = -0.3f) { es -> listOf(
+            t(s(es, "JAJAJA 😂", "LMAO 😂"), "bangers", 0.12f, YEL, inA = a("pop", 400), stroke = 0.1f, loop = a("wobble"))) })
+        add(TextTemplate("trend_tuto", cTrend, 4000, y = 0.3f) { es -> listOf(
+            t(s(es, "tutorial rápido", "quick tutorial"), "poppins_bold", 0.045f, bg = DIM, inA = a("slide_up", 400), bgRadius = 0.3f, bgPad = 0.4f)) })
+        add(TextTemplate("cute_pastel", cCute, 4000) { es -> listOf(
+            t(s(es, "sueños de colores", "pastel dreams"), "dancing_script", 0.12f, gradient = listOf(0xFFFFB6D5.toInt(), 0xFFB5E0FF.toInt()), inA = a("letter_fade", 1000), loop = a("float"), shadow = 0.05f)) })
+        add(TextTemplate("cute_star", cCute, 3500) { es -> listOf(
+            t(s(es, "⭐ estrella ⭐", "⭐ star ⭐"), "chewy", 0.11f, YEL, inA = a("pop", 450), stroke = 0.08f, strokeColor = ORG, loop = a("tada"))) })
+        add(TextTemplate("cute_flower", cCute, 4000) { es -> listOf(
+            t(s(es, "🌸 flores 🌸", "🌸 flowers 🌸"), "dancing_script", 0.14f, 0xFFFF9EC7.toInt(), inA = a("letter_fade", 900), loop = a("sway"), shadow = 0.06f)) })
+        add(TextTemplate("cute_sleepy", cCute, 4000) { _ -> listOf(
+            t("zzz... 💤", "chewy", 0.13f, 0xFFB9D4FF.toInt(), inA = a("fade", 700), loop = a("breathe"), stroke = 0.06f, strokeColor = PUR)) })
+        add(TextTemplate("cute_love", cCute, 4000) { es -> listOf(
+            t(s(es, "te quiero 💗", "love you 💗"), "pacifico", 0.11f, 0xFFFF5C8A.toInt(), inA = a("letter_pop", 800), loop = a("heartbeat"), shadow = 0.07f)) })
+        add(TextTemplate("cute_party", cCute, 4000) { es -> listOf(
+            t(s(es, "¡FIESTA! 🎈", "PARTY! 🎈"), "luckiest_guy", 0.13f, gradient = listOf(RED, ORG, YEL, GRN, BLU, PUR), inA = a("letter_bounce", 900), stroke = 0.07f, strokeColor = W, loop = a("beat"))) })
+        add(TextTemplate("cute_magic", cCute, 4000) { es -> listOf(
+            t(s(es, "✨ magia ✨", "✨ magic ✨"), "righteous", 0.14f, gradient = listOf(PUR, CYA), inA = a("letter_pop", 800), loop = a("tada"), stroke = 0.04f, strokeColor = W)) })
+        add(TextTemplate("cute_sunny", cCute, 4000, y = -0.3f) { es -> listOf(
+            t(s(es, "☀️ buen día", "☀️ good day"), "lobster", 0.11f, YEL, inA = a("slide_down", 500), loop = a("float"), shadow = 0.08f)) })
     }
 
     fun get(id: String): TextTemplate? = all.firstOrNull { it.id == id }
 
-    val categories: List<Int> get() = all.map { it.catRes }.distinct()
+    // "Hot" y "Divertidas" van primero: son las más nuevas.
+    val categories: List<Int> get() = all.map { it.catRes }.distinct().sortedBy { if (it == R.string.tcat_trend || it == R.string.tcat_cute) 0 else 1 }
 }

@@ -1562,4 +1562,11 @@
     <string name="easy_detail">Detalle</string>
     <string name="easy_fades">Fundidos</string>
     <string name="stk_act_path">Camino</string>
+    <string name="tcat_trend">Hot</string>
+    <string name="tcat_cute">Divertidas</string>
+    <string name="set_simple_view">Vista simplificada (un panel por pantalla)</string>
+    <string name="set_quick_bar">Barra rápida sobre el vídeo (dividir, duplicar, borrar)</string>
+    <string name="set_big_tiles">Tarjetas grandes en fuentes, filtros y animaciones</string>
+    <string name="tool_add">Añadir</string>
+    <string name="tool_looks">Looks</string>
 </resources>

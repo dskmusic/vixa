@@ -238,6 +238,14 @@ Con {icon:Fullscreen} la vista previa ocupa toda la pantalla **solo para mirar**
 
 Arriba, en la barra del editor, hay un botón **Pro**. Viene **activado** y muestra todas las herramientas. Si lo **apagas** pasas al **modo Normal**: solo se ven las herramientas principales y los rombos de animación (keyframes) de la línea de tiempo quedan ocultos. La app **recuerda tu elección**: los proyectos nuevos se abren en el modo en que lo dejaste.
 
+## Ajustes de la vista del editor
+
+En **Ajustes** puedes activar o desactivar tres cosas (vienen activadas):
+
+- **Vista simplificada:** con un panel abierto (Texto, Stickers, Transformar, Animar, Filtros, Ajustes de color…) se oculta la línea de tiempo y queda el vídeo y el panel. Los paneles que necesitan el cursor (fotogramas clave, voz en off, subtítulos, máscaras) conservan la línea de tiempo.
+- **Barra rápida:** al seleccionar un clip aparece sobre el vídeo una barrita con dividir, duplicar y borrar.
+- **Tarjetas grandes:** fuentes (con su "Aa"), filtros y animaciones se ven más grandes.
+
 ## Dibujar un camino a cualquier elemento
 
 En cualquier elemento que se pueda animar (texto, sticker, foto, vídeo en superposición…) abre **Animar** y toca **Dibujar camino**. Verás tu vídeo de fondo: dibuja con el dedo por dónde debe moverse y toca **Listo ✓**. Se crean los keyframes de posición por ti. Para quitarlo toca **Quitar camino**.
@@ -393,6 +401,8 @@ Animan cualquier propiedad en el tiempo. Mueve el cabezal y toca el **rombo** ju
 ---
 
 # {icon:TextFields} 6. Texto, plantillas, stickers y subtítulos
+
+Las plantillas de texto incluyen las categorías **Hot** y **Divertidas**, con estilos de moda para vídeos cortos.
 
 ## {icon:TextFields} Texto
 

@@ -238,6 +238,14 @@ With {icon:Fullscreen} the preview takes the whole screen **just for watching**:
 
 At the top of the editor there is a **Pro** button. It comes **on** and shows every tool. If you turn it **off** you switch to **Normal mode**: only the main tools are shown and the animation diamonds (keyframes) on the timeline are hidden. The app **remembers your choice**: new projects open in the mode you left it in.
 
+## Editor view settings
+
+In **Settings** you can turn three things on or off (they come on by default):
+
+- **Simple view:** with a panel open (Text, Stickers, Transform, Animate, Filters, Color adjustments…) the timeline is hidden and you see the video and the panel. Panels that need the playhead (keyframes, voice-over, subtitles, masks) keep the timeline.
+- **Quick bar:** when you select a clip, a small bar over the video offers split, duplicate and delete.
+- **Big cards:** fonts (shown with their "Aa"), filters and animations look bigger.
+
 ## Draw a path for any element
 
 On any element that can be animated (text, sticker, photo, overlay video…) open **Animate** and tap **Draw a path**. You will see your video behind: draw with your finger where it should move and tap **Done ✓**. The position keyframes are created for you. To remove it tap **Remove path**.
@@ -393,6 +401,8 @@ They animate any property over time. Move the playhead and tap the **diamond** n
 ---
 
 # {icon:TextFields} 6. Text, templates, stickers and subtitles
+
+Text templates include the **Hot** and **Fun** categories, with trending styles for short videos.
 
 ## {icon:TextFields} Text
 

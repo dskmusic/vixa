@@ -116,26 +116,27 @@ fun PreciseSlider(
     trailing: @Composable (() -> Unit)? = null,
 ) {
     var editing by remember { mutableStateOf(false) }
-    Column(modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-        Row(
-            Modifier.fillMaxWidth().combinedClickable(onClick = {}, onDoubleClick = { onChange(default); onFinished() }),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(label, style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (trailing != null) trailing()
-            Text(
-                format(value),
-                style = MaterialTheme.typography.labelLarge,
-                color = if (value != default) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable { editing = true }.padding(horizontal = 8.dp, vertical = 4.dp),
-            )
-        }
+    // Una sola fila: nombre (ancho fijo, con puntos suspensivos), deslizador y valor. Doble toque: valor por defecto.
+    Row(
+        modifier.fillMaxWidth().padding(horizontal = 12.dp).combinedClickable(onClick = {}, onDoubleClick = { onChange(default); onFinished() }),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.labelLarge, modifier = Modifier.width(92.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
         Slider(
             value = value.coerceIn(range.start, range.endInclusive),
             onValueChange = onChange,
             valueRange = range,
             onValueChangeFinished = onFinished,
-            modifier = Modifier.height(36.dp),
+            modifier = Modifier.weight(1f).height(36.dp),
+        )
+        if (trailing != null) trailing()
+        Text(
+            format(value),
+            style = MaterialTheme.typography.labelLarge,
+            color = if (value != default) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = androidx.compose.ui.text.style.TextAlign.End,
+            maxLines = 1,
+            modifier = Modifier.width(56.dp).clip(RoundedCornerShape(6.dp)).clickable { editing = true }.padding(horizontal = 4.dp, vertical = 4.dp),
         )
     }
     if (editing) {

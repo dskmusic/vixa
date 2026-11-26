@@ -93,7 +93,19 @@ private val VixaShapes = Shapes(
 fun VixaTheme(settings: AppSettings, content: @Composable () -> Unit) {
     val dark = isDark(settings, isSystemInDarkTheme())
     val scheme = remember(settings.accent, dark, settings.theme) { vixaScheme(settings.accent, dark, settings.theme == ThemeMode.OLED) }
-    MaterialTheme(colorScheme = scheme, shapes = VixaShapes, content = content)
+    MaterialTheme(colorScheme = scheme, shapes = VixaShapes, typography = VixaTypography, content = content)
 }
 
 fun Color.argb(): Int = toArgb()
+
+/** Pocos tamaños y pesos: título (20/16/14), cuerpo (15/14/12) y etiquetas (13/12/11). */
+private val VixaTypography: androidx.compose.material3.Typography = androidx.compose.material3.Typography().let { b ->
+    fun st(t: androidx.compose.ui.text.TextStyle, size: Float, w: androidx.compose.ui.text.font.FontWeight) = t.copy(fontSize = androidx.compose.ui.unit.TextUnit(size, androidx.compose.ui.unit.TextUnitType.Sp), lineHeight = androidx.compose.ui.unit.TextUnit(size * 1.35f, androidx.compose.ui.unit.TextUnitType.Sp), fontWeight = w)
+    val sb = androidx.compose.ui.text.font.FontWeight.SemiBold
+    val md = androidx.compose.ui.text.font.FontWeight.Medium
+    androidx.compose.material3.Typography(
+        titleLarge = st(b.titleLarge, 20f, sb), titleMedium = st(b.titleMedium, 16f, sb), titleSmall = st(b.titleSmall, 14f, sb),
+        bodyLarge = st(b.bodyLarge, 15f, androidx.compose.ui.text.font.FontWeight.Normal), bodyMedium = st(b.bodyMedium, 14f, androidx.compose.ui.text.font.FontWeight.Normal), bodySmall = st(b.bodySmall, 12f, androidx.compose.ui.text.font.FontWeight.Normal),
+        labelLarge = st(b.labelLarge, 13f, md), labelMedium = st(b.labelMedium, 12f, md), labelSmall = st(b.labelSmall, 11f, md),
+    )
+}

@@ -38,6 +38,12 @@ data class AppSettings(
     val haptics: Boolean = true,
     /** Modo Pro del editor (todas las herramientas). Activado por defecto; si se apaga se recuerda en los proyectos nuevos. */
     val proMode: Boolean = true,
+    /** Con un panel abierto se oculta la línea de tiempo (un panel por pantalla). */
+    val simpleView: Boolean = true,
+    /** Barra flotante sobre el vídeo con dividir, duplicar y borrar cuando hay un clip seleccionado. */
+    val quickClipBar: Boolean = true,
+    /** Tarjetas grandes (con vista previa) en fuentes, filtros y animaciones. */
+    val bigTiles: Boolean = true,
     val autosave: Boolean = true,
     val previewSide: Int = 540,
     val useProxies: Boolean = true,

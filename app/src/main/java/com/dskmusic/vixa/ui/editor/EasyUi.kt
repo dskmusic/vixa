@@ -35,7 +35,7 @@ fun easyMode(vm: EditorViewModel): Boolean = !vm.container.settings.flow.collect
 /** Fila de botones grandes (icono + texto). Se desplaza si no caben. */
 @Composable
 fun EasyBar(tabs: List<EasyTab>, selected: String, onSelect: (String) -> Unit) {
-    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = Sp.s, vertical = Sp.xs), horizontalArrangement = Arrangement.spacedBy(Sp.xs)) {
         for (t in tabs) {
             val active = t.key == selected
             val bg = if (active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest
@@ -48,4 +48,22 @@ fun EasyBar(tabs: List<EasyTab>, selected: String, onSelect: (String) -> Unit) {
             }
         }
     }
+}
+
+/** Tarjeta con un título pequeño: agrupa controles relacionados (Color, Contorno, Sombra...). */
+@Composable
+fun SectionCard(title: String, content: @Composable () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp).clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceContainerLow).padding(vertical = 8.dp)) {
+        Text(title, Modifier.padding(horizontal = 12.dp, vertical = 2.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        content()
+    }
+}
+
+/** Escala de espacios de la interfaz (dp): 4, 8, 12, 16 y 24. Usarla en vez de números sueltos. */
+object Sp {
+    val xs = 4.dp
+    val s = 8.dp
+    val m = 12.dp
+    val l = 16.dp
+    val xl = 24.dp
 }

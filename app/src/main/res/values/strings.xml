@@ -1563,4 +1563,11 @@
     <string name="easy_detail">Detail</string>
     <string name="easy_fades">Fades</string>
     <string name="stk_act_path">Path</string>
+    <string name="tcat_trend">Hot</string>
+    <string name="tcat_cute">Fun</string>
+    <string name="set_simple_view">Simple view (one panel per screen)</string>
+    <string name="set_quick_bar">Quick bar over the video (split, duplicate, delete)</string>
+    <string name="set_big_tiles">Big cards for fonts, filters and animations</string>
+    <string name="tool_add">Add</string>
+    <string name="tool_looks">Looks</string>
 </resources>

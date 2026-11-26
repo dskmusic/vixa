@@ -97,6 +97,13 @@ fun rememberLoopProgress(): Float {
  * Rejilla de casillas: columnas según el ancho (mínimo 3, más en tablet/apaisado) y ancho fijo por casilla,
  * de modo que una fila incompleta mantiene el mismo tamaño que las demás. [content] recibe el modificador de ancho.
  */
+/** Altura de las tarjetas de fuentes, filtros y animaciones: grandes (con vista previa) o como antes, según Ajustes. */
+@Composable
+fun tileH(): Dp {
+    val big = com.dskmusic.vixa.ui.ScrollHints.container?.settings?.flow?.collectAsState()?.value?.bigTiles ?: true
+    return if (big) 92.dp else 68.dp
+}
+
 @Composable
 fun TileGrid(modifier: Modifier = Modifier, minTile: Dp = 104.dp, gap: Dp = 6.dp, content: @Composable FlowRowScope.(Modifier) -> Unit) {
     BoxWithConstraints(modifier.fillMaxWidth().padding(horizontal = 12.dp)) {

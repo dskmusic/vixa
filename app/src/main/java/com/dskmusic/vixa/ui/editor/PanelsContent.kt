@@ -200,8 +200,6 @@ fun TextPanel(vm: EditorViewModel, project: Project, c: Clip, pick: (PickRequest
                 ColorRow(layer.color, { col -> upd { it.copy(color = col, gradient = emptyList()) } }, alpha = true)
             }
             if (!spec.subtitle) {
-                PreciseSlider(stringResource(R.string.position_x), layer.x, { v -> upd(true) { it.copy(x = v) } }, range = -0.6f..0.6f, onFinished = { vm.commit() })
-                PreciseSlider(stringResource(R.string.position_y), layer.y, { v -> upd(true) { it.copy(y = v) } }, range = -0.6f..0.6f, onFinished = { vm.commit() })
                 Row(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     AssistChip({ val n = Layer(text = context.getString(R.string.default_text), y = layer.y + 0.1f); vm.updateClip(h, c.id) { x -> x.copy(text = x.text?.copy(layers = x.text.layers + n)) }; layerId = n.id }, { Text(stringResource(R.string.add_text_layer)) })
                     AssistChip({ val n = Layer(kind = LayerKind.RECT, w = 0.3f, h = 0.008f, y = layer.y + 0.06f); vm.updateClip(h, c.id) { x -> x.copy(text = x.text?.copy(layers = listOf(n) + x.text.layers)) }; layerId = n.id }, { Text(stringResource(R.string.add_shape_layer)) })
@@ -213,8 +211,23 @@ fun TextPanel(vm: EditorViewModel, project: Project, c: Clip, pick: (PickRequest
         }
         1 -> {
             val fonts = remember(tab) { Fonts.all(context) }
-            FlowRow(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            val bigFonts = com.dskmusic.vixa.ui.ScrollHints.container?.settings?.flow?.collectAsState()?.value?.bigTiles ?: true
+            if (bigFonts) TileGrid(Modifier.padding(vertical = 4.dp)) { tile ->
                 for (f in fonts) {
+                    val family = remember(f.id) { FontFamily(Fonts.typeface(f.id)) }
+                    val sel = layer.fontId == f.id
+                    Column(
+                        tile.height(tileH()).clip(RoundedCornerShape(14.dp)).background(if (sel) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest)
+                            .clickable { upd { it.copy(fontId = f.id) } }.padding(6.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
+                    ) {
+                        Text("Aa", fontFamily = family, fontSize = 28.sp, maxLines = 1)
+                        Text(f.name, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    }
+                }
+            }
+            FlowRow(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (!bigFonts) for (f in fonts) {
                     val family = remember(f.id) { FontFamily(Fonts.typeface(f.id)) }
                     FilterChip(layer.fontId == f.id, { upd { it.copy(fontId = f.id) } }, { Text(f.name, fontFamily = family, maxLines = 1) })
                 }
@@ -234,27 +247,31 @@ fun TextPanel(vm: EditorViewModel, project: Project, c: Clip, pick: (PickRequest
             PreciseSlider(stringResource(R.string.letter_spacing), layer.letterSpacing, { v -> upd(true) { it.copy(letterSpacing = v) } }, range = -0.1f..1f, default = 0f, onFinished = { vm.commit() })
         }
         2 -> {
-            SectionTitle(stringResource(R.string.color))
+            SectionCard(stringResource(R.string.color)) {
             ColorRow(layer.color, { col -> upd { it.copy(color = col, gradient = emptyList()) } })
             SwitchLine(stringResource(R.string.gradient), layer.gradient.size >= 2) { on -> upd { it.copy(gradient = if (on) listOf(it.color, 0xFF5CE1E6.toInt()) else emptyList()) } }
             if (layer.gradient.size >= 2) {
                 ColorRow(layer.gradient[1], { col -> upd { it.copy(gradient = listOf(it.gradient.firstOrNull() ?: it.color, col)) } })
                 PreciseSlider(stringResource(R.string.angle), layer.gradientAngle, { v -> upd(true) { it.copy(gradientAngle = v) } }, range = 0f..360f, onFinished = { vm.commit() }, format = { String.format(Locale.US, "%.0f°", it) }, inputScale = 1f)
             }
-            SectionTitle(stringResource(R.string.stroke))
+            }
+            SectionCard(stringResource(R.string.stroke)) {
             PreciseSlider(stringResource(R.string.width), layer.strokeWidth, { v -> upd(true) { it.copy(strokeWidth = v) } }, range = 0f..0.4f, default = 0f, onFinished = { vm.commit() })
             if (layer.strokeWidth > 0f) ColorRow(layer.strokeColor, { col -> upd { it.copy(strokeColor = col) } })
-            SectionTitle(stringResource(R.string.shadow))
+            }
+            SectionCard(stringResource(R.string.shadow)) {
             PreciseSlider(stringResource(R.string.radius), layer.shadowRadius, { v -> upd(true) { it.copy(shadowRadius = v) } }, range = 0f..0.5f, default = 0f, onFinished = { vm.commit() })
             if (layer.shadowRadius > 0f) {
                 ColorRow(layer.shadowColor, { col -> upd { it.copy(shadowColor = col) } }, alpha = true)
                 PreciseSlider(stringResource(R.string.offset), layer.shadowDy, { v -> upd(true) { it.copy(shadowDy = v, shadowDx = v * 0.5f) } }, range = 0f..0.3f, default = 0.06f, onFinished = { vm.commit() })
             }
-            SectionTitle(stringResource(R.string.background))
+            }
+            SectionCard(stringResource(R.string.background)) {
             ColorRow(layer.bgColor, { col -> upd { it.copy(bgColor = col) } }, alpha = true, allowNone = true)
             if (layer.bgColor != 0) {
                 PreciseSlider(stringResource(R.string.padding), layer.bgPadding, { v -> upd(true) { it.copy(bgPadding = v) } }, range = 0f..1f, default = 0.3f, onFinished = { vm.commit() })
                 PreciseSlider(stringResource(R.string.corner_radius), layer.bgRadius, { v -> upd(true) { it.copy(bgRadius = v) } }, range = 0f..1f, default = 0.2f, onFinished = { vm.commit() })
+            }
             }
         }
         else -> {
@@ -268,9 +285,9 @@ fun TextPanel(vm: EditorViewModel, project: Project, c: Clip, pick: (PickRequest
             fun set(r: AnimRef?) = upd { when (kind) { AnimKind.IN -> it.copy(animIn = r); AnimKind.OUT -> it.copy(animOut = r); AnimKind.LOOP -> it.copy(animLoop = r) } }
             val animProg = rememberLoopProgress()
             TileGrid(Modifier.padding(vertical = 6.dp)) { tile ->
-                PreviewTile(stringResource(R.string.none), cur == null, { set(null) }, tile.height(68.dp)) { Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerHighest)) }
+                PreviewTile(stringResource(R.string.none), cur == null, { set(null) }, tile.height(tileH())) { Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerHighest)) }
                 for (a in Anims.list(kind, true).favFirst(rememberFavs()) { "an:$kind:${it.id}" }) {
-                    TextAnimTile(a, kind, stringResource(a.nameRes), cur?.id == a.id, animProg, tile.height(68.dp), favKey = "an:$kind:${a.id}") { set(AnimRef(a.id, cur?.durationUs ?: 500_000L)); vm.player.seekTo(c.startUs); vm.player.play() }
+                    TextAnimTile(a, kind, stringResource(a.nameRes), cur?.id == a.id, animProg, tile.height(tileH()), favKey = "an:$kind:${a.id}") { set(AnimRef(a.id, cur?.durationUs ?: 500_000L)); vm.player.seekTo(c.startUs); vm.player.play() }
                 }
             }
             if (cur != null && kind != AnimKind.LOOP) {

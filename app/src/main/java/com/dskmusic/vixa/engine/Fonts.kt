@@ -34,6 +34,9 @@ object Fonts {
         FontDef("space_mono", "Space Mono", "space_mono.ttf", category = "mono"),
         FontDef("space_mono_bold", "Space Mono Bold", "space_mono_bold.ttf", category = "mono"),
         FontDef("press_start", "Press Start 2P", "press_start_2p.ttf", category = "mono"),
+        FontDef("permanent_marker", "Permanent Marker", "permanent_marker.ttf", category = "script"),
+        FontDef("luckiest_guy", "Luckiest Guy", "luckiest_guy.ttf", category = "display"),
+        FontDef("chewy", "Chewy", "chewy.ttf", category = "display"),
     )
 
     private val cache = ConcurrentHashMap<String, Typeface>()

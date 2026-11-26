@@ -1,5 +1,7 @@
 package com.dskmusic.vixa.ui.editor
 
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.animateContentSize
 import androidx.compose.ui.draw.clip
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.foundation.combinedClickable
@@ -137,9 +139,11 @@ private class ToolDef(val id: String, val icon: ImageVector, val label: Int, val
 
 /** Herramientas visibles en modo Fácil (sin clip y con clip seleccionado). El resto es solo del modo Pro. */
 private val EASY_TOOLS = setOf(
-    "add", "text", "templates", "stickers", "audio", "voiceover", "subtitles", "ai", "adjlayer", "fxlayer", "canvas",
-    "split", "delete", "dup", "speed", "volume", "animation", "filter", "adjust", "effects", "transition", "crop", "freeze",
+    "add", "text", "stickers", "audio", "ai", "templates", "effects", "filter", "adjust", "transform", "speed", "volume", "animation",
+    "replace", "split", "delete", "dup", "crop", "transition",
 )
+
+private val SIMPLE_TOOLS = setOf("text", "templates", "stickers", "speed", "volume", "transform", "crop", "animation", "filter", "adjust", "effects", "transition", "canvas", "audiofx")
 
 @Composable
 fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit, onOpenProject: (String) -> Unit) {
@@ -224,7 +228,7 @@ fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit,
         }
     }
     val rootTools = listOf(
-        ToolDef("add", Icons.Default.Add, R.string.add_media) { addMain() },
+        ToolDef("add", Icons.Default.Add, R.string.tool_add) { addMain() },
         ToolDef("pip", Icons.Default.PictureInPicture, R.string.overlay) { pick = PickRequest(PickKind.MEDIA, AddTarget.OVERLAY, multi = true) { vm.addMedia(it, AddTarget.OVERLAY) } },
         ToolDef("audio", Icons.Default.MusicNote, R.string.audio) { pick = PickRequest(PickKind.MEDIA, AddTarget.AUDIO, multi = true) { vm.addMedia(it, AddTarget.AUDIO) } },
         ToolDef("text", Icons.Default.TextFields, R.string.text) { vm.addText(); vm.tool.value = "text" },
@@ -233,7 +237,7 @@ fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit,
         ToolDef("subtitles", Icons.Default.Subtitles, R.string.subtitles),
         ToolDef("voiceover", Icons.Default.Mic, R.string.voice_over),
         ToolDef("ai", Icons.Default.AutoAwesome, R.string.ai_short),
-        ToolDef("adjlayer", Icons.Default.Layers, R.string.adjust_layer) { vm.addAdjustLayer(); vm.tool.value = "filter" },
+        ToolDef("adjlayer", Icons.Default.Layers, R.string.tool_looks) { vm.addAdjustLayer(); vm.tool.value = "filter" },
         // Sin clip seleccionado: efectos sobre todo el proyecto, como capa independiente (los de clip están al seleccionar uno).
         ToolDef("fxlayer", Icons.Default.Bolt, R.string.effects) { vm.addEffectLayer(); vm.tool.value = "effects" },
         ToolDef("canvas", Icons.Default.AspectRatio, R.string.canvas),
@@ -290,16 +294,31 @@ fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit,
     }
     val appSettings by container.settings.flow.collectAsState()
     val pro = appSettings.proMode
+    // Vista simplificada: con uno de estos paneles abierto se oculta la línea de tiempo (los que dependen del cursor la conservan).
+    val simple = appSettings.simpleView && tool.isNotEmpty() && tool in SIMPLE_TOOLS
     val tools = (if (clip != null) clipTools else rootTools).filter { pro || it.id in EASY_TOOLS }
 
+    // Barra rápida sobre el vídeo: dividir, duplicar y borrar el clip seleccionado (se puede quitar en Ajustes)
+    val quickBar: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit = {
+        val c = clip
+        if (appSettings.quickClipBar && c != null && tool.isEmpty()) Row(
+            Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp).clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.surface.copy(alpha = 0.88f)).padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton({ splitAsk = true }, Modifier.size(40.dp)) { Icon(Icons.Default.ContentCut, stringResource(R.string.split), Modifier.size(20.dp)) }
+            IconButton({ vm.edit(R.string.hist_duplicate) { it.duplicateClip(c.id) } }, Modifier.size(40.dp)) { Icon(Icons.Default.ContentCopy, stringResource(R.string.duplicate), Modifier.size(20.dp)) }
+            IconButton({ vm.deleteSelected() }, Modifier.size(40.dp)) { Icon(Icons.Default.Delete, stringResource(R.string.delete), Modifier.size(20.dp), tint = MaterialTheme.colorScheme.error) }
+        }
+    }
     val topBar: @Composable (Modifier) -> Unit = { m ->
         Row(m.height(48.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton({ exit() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
             Text(p.name.ifBlank { stringResource(R.string.untitled) }, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall)
             androidx.compose.material3.FilterChip(pro, { vm.container.settings.update { it.copy(proMode = !it.proMode) } }, { Text("Pro") }, Modifier.padding(end = 4.dp))
-            HistoryButton(vm, true)
-            HistoryButton(vm, false)
-            FilledTonalButton({ vm.player.pause(); exporting = true }, Modifier.padding(end = 8.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp)) { Text(stringResource(R.string.export)) }
+            Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.surfaceContainerHigh, modifier = Modifier.padding(end = 6.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) { HistoryButton(vm, true); HistoryButton(vm, false) }
+            }
+            androidx.compose.material3.Button({ vm.player.pause(); exporting = true }, Modifier.padding(end = 8.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp)) { Text(stringResource(R.string.export)) }
         }
     }
     val toolbarRow: @Composable () -> Unit = {
@@ -368,7 +387,7 @@ fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit,
                 Column(Modifier.fillMaxSize()) {
                     Row(Modifier.fillMaxWidth().weight(1f)) {
                         Column(Modifier.weight(1f).fillMaxHeight()) {
-                            Preview(vm, p, Modifier.fillMaxWidth().weight(1f))
+                            Box(Modifier.fillMaxWidth().weight(1f)) { Preview(vm, p, Modifier.fillMaxSize()); quickBar() }
                             Transport(vm, p, onResize = { dy -> splitDelta = (splitDelta + dy / splitDensity).coerceIn(landBase.value - maxH.value * 0.7f, landBase.value - 90f) }, onReset = { splitDelta = 0f })
                         }
                         Surface(Modifier.width(sideW).fillMaxHeight(), color = MaterialTheme.colorScheme.surfaceContainer) {
@@ -396,14 +415,21 @@ fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit,
                         val baseH = minOf(fitH, maxHeight - 44.dp - tlMin).coerceAtLeast(0.dp)
                         val hiH = (maxHeight - 44.dp - 90.dp).coerceAtLeast(96.dp)
                         val previewH = (baseH + splitDelta.dp).coerceIn(96.dp, hiH)
-                        Column(Modifier.fillMaxSize()) {
-                            Preview(vm, p, Modifier.fillMaxWidth().height(previewH))
+                        if (simple) Column(Modifier.fillMaxSize()) {
+                            Preview(vm, p, Modifier.fillMaxWidth().weight(1f))
+                            Transport(vm, p)
+                        } else Column(Modifier.fillMaxSize()) {
+                            Box(Modifier.fillMaxWidth().height(previewH)) { Preview(vm, p, Modifier.fillMaxSize()); quickBar() }
                             Transport(vm, p, onResize = { dy -> splitDelta = (splitDelta + dy / splitDensity).coerceIn(96f - baseH.value, hiH.value - baseH.value) }, onReset = { splitDelta = 0f })
                             Timeline(vm, p, Modifier.fillMaxWidth().weight(1f), addKind)
                         }
                     }
-                    Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
-                        if (tool.isEmpty()) toolbarRow() else panel(Modifier.fillMaxWidth().heightIn(max = minOf(maxH * 0.4f, 340.dp)))
+                    Surface(Modifier.animateContentSize(androidx.compose.animation.core.tween(180)), color = MaterialTheme.colorScheme.surfaceContainer) {
+                        androidx.compose.animation.AnimatedContent(
+                            targetState = tool.isEmpty(),
+                            transitionSpec = { (androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(180)) + androidx.compose.animation.slideInVertically(androidx.compose.animation.core.tween(180)) { it / 5 }) togetherWith androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(100)) },
+                            label = "toolsPanel",
+                        ) { isTools -> if (isTools) toolbarRow() else panel(Modifier.fillMaxWidth().heightIn(max = if (simple) minOf(maxH * 0.5f, 440.dp) else minOf(maxH * 0.4f, 340.dp))) }
                     }
                 }
             }

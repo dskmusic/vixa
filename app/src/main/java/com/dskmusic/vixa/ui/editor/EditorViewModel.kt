@@ -228,28 +228,8 @@ class EditorViewModel(private val context: Context, val container: AppContainer,
     /** Lo pone la vista previa: devuelve el fotograma que se ve ahora (solo desde el hilo principal) o null. */
     var previewShot: (() -> android.graphics.Bitmap?)? = null
 
-    /** Última captura buena (no negra) de la vista previa: miniatura de reserva si al guardar la superficie ya no existe. */
-    private var lastGoodShot: android.graphics.Bitmap? = null
-
-    private fun android.graphics.Bitmap.nearlyBlack(): Boolean {
-        var sum = 0L
-        val n = 8
-        for (i in 0 until n) for (j in 0 until n) {
-            val c = getPixel(i * (width - 1) / (n - 1), j * (height - 1) / (n - 1))
-            sum += ((c shr 16) and 255) + ((c shr 8) and 255) + (c and 255)
-        }
-        return sum / (n * n * 3) < 12
-    }
-
-    /**
-     * El fotograma que se ve ahora en la vista previa (con capas, emojis y pegatinas), o la última captura buena si ahora no hay
-     * superficie o sale negro. Es la miniatura del proyecto: refleja el último fotograma que el usuario tenía seleccionado.
-     */
-    private fun bestShot(): android.graphics.Bitmap? {
-        val live = try { previewShot?.invoke() } catch (e: Throwable) { null }
-        if (live != null && !live.isRecycled && !live.nearlyBlack()) { lastGoodShot = live; return live }
-        return lastGoodShot ?: live
-    }
+    /** Captura real de la vista previa en este instante (con filtros y efectos), o null si ya no hay superficie. */
+    private fun liveShot(): android.graphics.Bitmap? = try { previewShot?.invoke() } catch (e: Throwable) { null }
 
     private fun saveNow(updateThumb: Boolean = false) {
         val p = _project.value ?: return
@@ -257,9 +237,10 @@ class EditorViewModel(private val context: Context, val container: AppContainer,
         val hl = history?.list()
         val hp = history?.position ?: 0
         // Miniatura del proyecto: el fotograma real de la vista previa (con efectos y filtros); si es negro, la guarda con el primer medio.
-        val shot = if (updateThumb) bestShot() else null
+        val shot = if (updateThumb) liveShot() else null
+        val pos = player.positionUs.value
         container.appScope.launch {
-            try { container.projects.save(p, updateThumb, shot) } catch (e: Throwable) { ErrorLog.log("Save", e) }
+            try { container.projects.save(p, updateThumb, shot, pos) } catch (e: Throwable) { ErrorLog.log("Save", e) }
             if (hl != null) container.projects.saveHistory(p.id, hl, hp)
         }
     }
@@ -270,9 +251,7 @@ class EditorViewModel(private val context: Context, val container: AppContainer,
         saveJob = viewModelScope.launch {
             delay(900)
             val p = _project.value ?: return@launch
-            // Cada autoguardado deja también la miniatura con el fotograma actual (así nunca queda vacía ni desfasada).
-            val shot = bestShot()
-            try { container.projects.save(p, updateThumb = shot != null, thumb = shot) } catch (e: Throwable) { ErrorLog.log("Autosave", e) }
+            try { container.projects.save(p) } catch (e: Throwable) { ErrorLog.log("Autosave", e) }
         }
     }
 

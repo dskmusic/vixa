@@ -234,6 +234,10 @@ object CompositionBuilder {
             if (o.soloRun >= 0) lane(runs.getOrNull(o.soloRun) ?: emptyList())?.let { sequences.clear(); sequences.add(it); singleInput = true }
         }
 
+        // Con una sola secuencia de vídeo (proyecto sin medios: solo color, textos o pegatinas) Media3 usa SingleInputVideoGraph,
+        // que no admite VideoCompositorSettings: se trata como "una sola entrada".
+        if (o.includeVideo && sequences.size <= 1) singleInput = true
+
         if (o.includeAudio) {
             val audible = structure.tracks.flatMap { it.clips }.filter { it.audible && it.media != null }.sortedBy { it.startUs }
             val lanes = ArrayList<ArrayList<Clip>>()

@@ -177,6 +177,9 @@ fun SettingsScreen(container: AppContainer, onBack: () -> Unit, onTutorial: () -
                         PreciseSlider(stringResource(R.string.transition_duration), s.transitionDurationMs / 1000f, { v -> upd { it.copy(transitionDurationMs = (v * 1000).toInt()) } }, range = 0.1f..3f, default = 0.5f, format = sec, inputScale = 1f)
                         SwitchRowSimple(stringResource(R.string.magnetic_snap), s.snap) { on -> upd { it.copy(snap = on) } }
                         SwitchRowSimple(stringResource(R.string.haptics), s.haptics) { on -> upd { it.copy(haptics = on) } }
+                        SwitchRowSimple(stringResource(R.string.set_simple_view), s.simpleView) { on -> upd { it.copy(simpleView = on) } }
+                        SwitchRowSimple(stringResource(R.string.set_quick_bar), s.quickClipBar) { on -> upd { it.copy(quickClipBar = on) } }
+                        SwitchRowSimple(stringResource(R.string.set_big_tiles), s.bigTiles) { on -> upd { it.copy(bigTiles = on) } }
                         SwitchRowSimple(stringResource(R.string.playhead_snap), s.playheadSnap) { on -> upd { it.copy(playheadSnap = on) } }
                         SwitchRowSimple(stringResource(R.string.scroll_hint), s.scrollHint) { on -> upd { it.copy(scrollHint = on, hintsSeen = if (on) emptySet() else it.hintsSeen) } }
                         SwitchRowSimple(stringResource(R.string.autosave), s.autosave) { on -> upd { it.copy(autosave = on) } }

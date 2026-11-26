@@ -118,12 +118,13 @@ private fun rowHeightDp(t: TrackType): Float = when (t) {
 }
 
 private fun kindColor(k: ClipKind): Int = when (k) {
-    ClipKind.VIDEO, ClipKind.IMAGE -> 0xFF3A3F58.toInt()
-    ClipKind.COLOR -> 0xFF555555.toInt()
-    ClipKind.AUDIO -> 0xFF1F6F5C.toInt()
-    ClipKind.TEXT -> 0xFFB5622D.toInt()
-    ClipKind.STICKER -> 0xFF8D4AA8.toInt()
-    ClipKind.ADJUST -> 0xFF2F6FB0.toInt()
+    // Colores suaves y poco saturados: la línea de tiempo se lee mejor y cansa menos
+    ClipKind.VIDEO, ClipKind.IMAGE -> 0xFF454B66.toInt()
+    ClipKind.COLOR -> 0xFF5A5F6B.toInt()
+    ClipKind.AUDIO -> 0xFF3E7F72.toInt()
+    ClipKind.TEXT -> 0xFFB07A55.toInt()
+    ClipKind.STICKER -> 0xFF8A62A0.toInt()
+    ClipKind.ADJUST -> 0xFF4F78A8.toInt()
 }
 
 /**
@@ -648,16 +649,16 @@ fun Timeline(vm: EditorViewModel, project: Project, modifier: Modifier = Modifie
                     nc.restore()
                     if (selected) {
                         fillPaint.style = Paint.Style.STROKE
-                        fillPaint.strokeWidth = 2 * dp
-                        fillPaint.color = primary.toArgb()
+                        fillPaint.strokeWidth = 1.5f * dp
+                        fillPaint.color = androidx.core.graphics.ColorUtils.setAlphaComponent(primary.toArgb(), 215)
                         nc.drawRoundRect(rect, 5 * dp, 5 * dp, fillPaint)
                         fillPaint.style = Paint.Style.FILL
                         if (selection.size == 1) {
-                            nc.drawRoundRect(rect.left - 2 * dp, rect.top, rect.left + 8 * dp, rect.bottom, 4 * dp, 4 * dp, fillPaint)
-                            nc.drawRoundRect(rect.right - 8 * dp, rect.top, rect.right + 2 * dp, rect.bottom, 4 * dp, 4 * dp, fillPaint)
+                            nc.drawRoundRect(rect.left - 2 * dp, rect.top, rect.left + 6 * dp, rect.bottom, 4 * dp, 4 * dp, fillPaint)
+                            nc.drawRoundRect(rect.right - 6 * dp, rect.top, rect.right + 2 * dp, rect.bottom, 4 * dp, 4 * dp, fillPaint)
                             fillPaint.color = 0xFFFFFFFF.toInt()
-                            nc.drawRect(rect.left + 2 * dp, rect.centerY() - 6 * dp, rect.left + 4 * dp, rect.centerY() + 6 * dp, fillPaint)
-                            nc.drawRect(rect.right - 4 * dp, rect.centerY() - 6 * dp, rect.right - 2 * dp, rect.centerY() + 6 * dp, fillPaint)
+                            nc.drawRect(rect.left + 1.5f * dp, rect.centerY() - 5 * dp, rect.left + 3 * dp, rect.centerY() + 5 * dp, fillPaint)
+                            nc.drawRect(rect.right - 3 * dp, rect.centerY() - 5 * dp, rect.right - 1.5f * dp, rect.centerY() + 5 * dp, fillPaint)
                         }
                     }
                     if (c.groupId.isNotEmpty()) drawCircle(Color(0xFFFFD60A), 3 * dp, Offset(max(x0, 0f) + 8 * dp, top + rowH - 6 * dp))

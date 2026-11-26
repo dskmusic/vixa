@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import com.dskmusic.vixa.engine.ThumbComposer
 import com.dskmusic.vixa.model.Clip
 import com.dskmusic.vixa.model.ClipKind
 import com.dskmusic.vixa.model.FORMAT_VERSION
@@ -145,12 +146,12 @@ class ProjectStore(private val context: Context) {
     private fun info(p: Project) = ProjectInfo(p.id, p.name, p.modifiedAt, p.createdAt, p.durationUs, p.width, p.height, p.isTemplate)
 
     /** Guardado atómico (archivo temporal + renombrado) para no dejar nunca un project.json a medias. */
-    suspend fun save(project: Project, updateThumb: Boolean = false, thumb: Bitmap? = null): Project = withContext(Dispatchers.IO) {
+    suspend fun save(project: Project, updateThumb: Boolean = false, thumb: Bitmap? = null, positionUs: Long = 0L): Project = withContext(Dispatchers.IO) {
         saveLock.lock()
-        try { saveLocked(project, updateThumb, thumb) } finally { saveLock.unlock(); _changes.value++ }
+        try { saveLocked(project, updateThumb, thumb, positionUs) } finally { saveLock.unlock(); _changes.value++ }
     }
 
-    private fun saveLocked(project: Project, updateThumb: Boolean, thumb: Bitmap?): Project {
+    private fun saveLocked(project: Project, updateThumb: Boolean, thumb: Bitmap?, positionUs: Long): Project {
         val p = project.copy(modifiedAt = System.currentTimeMillis())
         val d = dir(p.id).apply { mkdirs() }
         val tmp = File(d, "project.json.tmp")
@@ -158,9 +159,13 @@ class ProjectStore(private val context: Context) {
         val target = File(d, "project.json")
         if (!tmp.renameTo(target)) { tmp.copyTo(target, overwrite = true); tmp.delete() }
         File(d, "meta.json").writeText(VixaJson.encodeToString(ProjectInfo.serializer(), info(p)))
-        // Con un fotograma de la vista previa (si no es oscuro) se usa ese; si no, el primer medio del proyecto.
-        if (updateThumb && thumb != null && !isDark(thumb)) { writeThumb(p.id, thumb); try { realMarker(p.id).createNewFile() } catch (e: Throwable) {} }
-        else if (updateThumb || !thumbFile(p.id).exists()) makeThumb(p)
+        // Miniatura: la captura real de la vista previa si vale; si no, el fotograma compuesto en la posición del cursor; si no, otro
+        // al azar con contenido (nunca un fondo liso). Solo si nada de eso es posible, el primer medio o una portada dibujada.
+        if (updateThumb) {
+            val chosen = try { ThumbComposer.best(p, positionUs, thumb) } catch (e: Throwable) { ErrorLog.log("ProjectStore/composer", e); null }
+            if (chosen != null) { writeThumb(p.id, chosen); try { realMarker(p.id).createNewFile() } catch (e: Throwable) {} } else makeThumb(p)
+            try { v2Marker(p.id).createNewFile() } catch (e: Throwable) {}
+        } else if (!thumbFile(p.id).exists()) makeThumb(p)
         return p
     }
 
@@ -270,8 +275,28 @@ class ProjectStore(private val context: Context) {
         return save(p.copy(id = newId(), name = p.name + " " + suffix, createdAt = System.currentTimeMillis()), updateThumb = true)
     }
 
+    /** Rehace en segundo plano las miniaturas que aún son una portada dibujada (proyectos guardados con versiones anteriores). */
+    suspend fun refreshThumbs() = withContext(Dispatchers.IO) {
+        var changed = false
+        for (info in infos(root)) {
+            try {
+                if (v2Marker(info.id).exists()) continue
+                val f = File(dir(info.id), "project.json")
+                if (!f.exists()) continue
+                val p = decode(f.readText())
+                val bmp = ThumbComposer.best(p, 0L, null)
+                if (bmp != null) { writeThumb(p.id, bmp); realMarker(p.id).createNewFile(); changed = true }
+                v2Marker(p.id).createNewFile()   // también si no hay nada que componer: así no se repite en cada arranque
+            } catch (e: Throwable) { ErrorLog.log("ProjectStore/refreshThumbs", e) }
+        }
+        if (changed) _changes.value++
+    }
+
     /** Existe si la miniatura es un fotograma real de la vista previa (no la portada dibujada). */
     private fun realMarker(id: String) = File(dir(id), "thumb.real")
+
+    /** Existe si la miniatura ya se calculó con el sistema nuevo (fotograma real o compuesto); las antiguas se rehacen una vez. */
+    private fun v2Marker(id: String) = File(dir(id), "thumb.v2")
 
     /** Portada para proyectos sin vídeo ni fotos: degradado del fondo con el primer texto y el primer emoji. */
     private fun placeholderThumb(p: Project): Bitmap {
