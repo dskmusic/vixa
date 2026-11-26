@@ -2,6 +2,9 @@
 # Las librerías de AndroidX, Media3, Coil, OkHttp, kotlinx.serialization y ML Kit traen sus propias reglas (consumer rules).
 # Aquí solo lo que usa JNI o reflexión desde código nativo, que R8 no puede ver.
 
+# --- giflossy (compresion de GIF): metodo nativo llamado por JNI
+-keep class com.dskmusic.vixa.engine.GifLossy { *; }
+
 # --- Runtimes de IA con código nativo (JNI busca clases y métodos por nombre)
 -keep class ai.onnxruntime.** { *; }
 -keep class com.k2fsa.sherpa.onnx.** { *; }

@@ -1622,4 +1622,6 @@
     <string name="wa_share">Share on WhatsApp</string>
     <string name="wa_hint">The parts are named _1deN, _2deN… so they stay in order. If WhatsApp shuffles them, pick them one by one in that order.</string>
     <string name="split_title">Exporting in parts of up to %1$d s</string>
+    <string name="qe_gif_exact">Exact result</string>
+    <string name="qe_gif_exact_busy">Calculating…</string>
 </resources>

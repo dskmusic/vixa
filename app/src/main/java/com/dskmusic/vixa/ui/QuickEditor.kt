@@ -71,6 +71,7 @@ import com.dskmusic.vixa.R
 import com.dskmusic.vixa.data.ErrorLog
 import com.dskmusic.vixa.engine.FrameStrip
 import com.dskmusic.vixa.engine.GifEncoder
+import com.dskmusic.vixa.engine.GifLossy
 import com.dskmusic.vixa.model.ClipKind
 import com.dskmusic.vixa.model.ExportKind
 import com.dskmusic.vixa.model.ExportSettings
@@ -202,10 +203,12 @@ private fun buildExactGif(
     dir.listFiles()?.forEach { it.delete() }
     val f = File(dir, "p" + System.nanoTime() + ".gif")
     FileOutputStream(f).buffered().use { os ->
-        val enc = GifEncoder(os, gw, gh, fps, comp, dither, loop, speed)
+        val enc = GifEncoder(os, gw, gh, fps, if (GifLossy.available && comp >= 1) 0 else comp, dither, loop, speed)
         for (i in seq) enc.addFrame(cropScale(frames[i], crop, gw, gh))
         enc.finish()
     }
+    // El mismo paso de compresión que la exportación: el aspecto y el tamaño de la vista previa son los del archivo final.
+    GifLossy.shrink(f, comp)
     return f to seq.size
 }
 
@@ -216,10 +219,16 @@ private fun buildExactGif(
 @Composable
 private fun LivePreview(
     frames: List<Bitmap>, stepUs: Long, crop: CropRect, gw: Int, fps: Int, speed: Float, boomerang: Boolean, loop: Boolean, comp: Int, dither: Boolean, modifier: Modifier,
+    sharedCache: java.util.concurrent.ConcurrentHashMap<Int, ImageBitmap>? = null,
+    playing: Boolean = true,
+    onPos: ((Long) -> Unit)? = null,
 ) {
+    val pl by rememberUpdatedState(playing)
+    val posCb by rememberUpdatedState(onPos)
     val seq = remember(frames, stepUs, fps, boomerang) { playSequence(frames.size, stepUs, fps, boomerang) }
     val delayMs = (1000.0 / fps / speed).toLong().coerceAtLeast(20L)
-    val cache = remember(frames, crop, gw, comp, dither) { java.util.concurrent.ConcurrentHashMap<Int, ImageBitmap>() }
+    // Con caché compartida (ya calentada en segundo plano por el editor) los fotogramas están listos antes de verlos.
+    val cache = sharedCache ?: remember(frames, crop, gw, comp, dither) { java.util.concurrent.ConcurrentHashMap<Int, ImageBitmap>() }
     LaunchedEffect(cache, seq) {
         withContext(Dispatchers.Default) {
             for (idx in seq.distinct()) {
@@ -228,12 +237,16 @@ private fun LivePreview(
             }
         }
     }
-    var shown by remember(seq) { mutableStateOf<ImageBitmap?>(null) }
+    // Se conserva el último fotograma al cambiar de secuencia (p. ej. al activar el boomerang): sin parpadeo en blanco.
+    var shown by remember { mutableStateOf<ImageBitmap?>(null) }
     LaunchedEffect(seq, delayMs, loop, cache) {
         var k = 0
         while (true) {
+            while (!pl) delay(50)
             val idx = seq[k]
             shown = cache.getOrPut(idx) { liveFrame(frames[idx], crop, gw, comp, dither).asImageBitmap() }
+            // El cabezal y la hora siguen al fotograma que se ve (en el boomerang, también de vuelta).
+            posCb?.invoke(idx * stepUs)
             delay(delayMs)
             k++
             if (k >= seq.size) {
@@ -315,7 +328,11 @@ fun QuickEditorDialog(container: AppContainer, project: Project, gif: Boolean, o
     var dither by remember { mutableStateOf(saved.gifDither) }
     var loop by remember { mutableStateOf(saved.gifLoop) }
     // Vista previa del GIF real (con todos los ajustes) en lugar del vídeo.
-    var gifView by remember { mutableStateOf(true) }
+    // Vista previa por defecto: el vídeo (instantánea). La del GIF solo bajo demanda (botón "Vista GIF" o al activar el boomerang).
+    var gifView by remember { mutableStateOf(false) }
+    // GIF exacto (con giflossy) solo cuando se pide: se guarda para qué ajustes se pidió y si se está generando.
+    var exactReqKey by remember { mutableStateOf<List<Any>?>(null) }
+    var exactBusy by remember { mutableStateOf(false) }
     var scrubbing by remember { mutableStateOf(false) }
     var scrubTick by remember { mutableIntStateOf(0) }
     var live by remember { mutableStateOf<List<Bitmap>>(emptyList()) }
@@ -359,38 +376,72 @@ fun QuickEditorDialog(container: AppContainer, project: Project, gif: Boolean, o
     // Para saber si el GIF exacto que hay corresponde a los ajustes actuales, y su tamaño real (extrapolado a todos los fotogramas).
     val curKey: List<Any> = listOf(start, end, crop, gw, gh, fpsEff, boomerang, comp, dither, loop, speed)
     // Fotogramas del tramo actual: si cae dentro de lo ya decodificado se recorta al instante, sin volver a decodificar.
-    val liveSlice: List<Bitmap> = remember(live, liveStep, liveStart, liveEnd, start, end) {
-        if (live.isEmpty() || start < liveStart || end > liveEnd) emptyList() else {
+    // Mientras se decodifica este mismo tramo se aprovecha lo que ya hay (a partir de 8 fotogramas): la vista previa arranca enseguida y crece.
+    val partialOk = liveBusy && start == liveStart && live.size >= 8
+    val liveSlice: List<Bitmap> = remember(live, liveStep, liveStart, liveEnd, start, end, partialOk) {
+        if (live.isEmpty() || start < liveStart || (end > liveEnd && !partialOk)) emptyList() else {
             val a = ((start - liveStart) / liveStep).toInt().coerceIn(0, live.size - 1)
             val b = (((end - liveStart) / liveStep).toInt() + 1).coerceIn(a + 1, live.size)
             live.subList(a, b)
         }
     }
     val liveReady = liveSlice.isNotEmpty()
+    // Instante (tiempo del clip) del primer fotograma de la vista del GIF: base para el cabezal.
+    val sliceStartUs = liveStart + ((start - liveStart) / liveStep).coerceAtLeast(0L) * liveStep
     val exactOk = exactFile != null && exactKey == curKey && tab != 1
     val k480 = min(1f, 480f / gw.coerceAtLeast(2))
     val shownBytes = if (exactOk) (exactBytes * (gifFrames.toDouble() / exactFrames) / (k480 * k480)).toLong() else gifBytes
 
     // Mover un tirador o el cabezal enseña el vídeo; 0,7 s después de dejar de tocar vuelve la vista previa del GIF.
     LaunchedEffect(scrubTick) { if (scrubTick > 0) { delay(700); scrubbing = false } }
-    // Cualquier ajuste del GIF (también el boomerang) vuelve a la vista previa del GIF si estaba apagada.
-    var firstSettings by remember { mutableStateOf(true) }
-    LaunchedEffect(boomerang, speed, width, fps, maxFrames, comp, dither, loop) {
-        if (firstSettings) firstSettings = false else if (gif) gifView = true
+    // Fotogramas ya procesados (recorte, ancho, compresión) preparados en segundo plano en cuanto hay fotogramas decodificados y tras cada
+    // cambio de esos ajustes (0,25 s después): al pedir la vista del GIF, o activar el boomerang, ya no hay nada que calcular.
+    val liveCache = remember(liveSlice, crop, gw, comp, dither) { java.util.concurrent.ConcurrentHashMap<Int, ImageBitmap>() }
+    LaunchedEffect(liveCache) {
+        if (!gif || liveSlice.isEmpty()) return@LaunchedEffect
+        delay(250)
+        withContext(Dispatchers.Default) {
+            for (idx in liveSlice.indices) {
+                if (!isActive) break
+                liveCache.getOrPut(idx) { liveFrame(liveSlice[idx], crop, gw, comp, dither).asImageBitmap() }
+            }
+        }
     }
-    // Fotogramas en memoria: se decodifican una vez por tramo (hasta 110 y ~48 MB) y con ellos casi todo se ve al instante.
-    LaunchedEffect(gif, gifView, start, end) {
-        if (!gif || !gifView) return@LaunchedEffect
+    // Activar el boomerang enseña el GIF (el reproductor del vídeo no puede ir hacia atrás); el resto de ajustes no cambian la vista.
+    var firstBoomerang by remember { mutableStateOf(true) }
+    LaunchedEffect(boomerang) {
+        if (firstBoomerang) firstBoomerang = false else if (gif && boomerang) {
+            android.util.Log.i("VixaGif", "boomerang: liveReady=" + liveReady + " liveBusy=" + liveBusy + " live=" + live.size + " rango vivo=" + liveStart + "-" + liveEnd + " actual=" + start + "-" + end)
+            gifView = true; scrubbing = false
+        }
+    }
+    // Fotogramas en memoria: se preparan en segundo plano nada más abrir y cada vez que el tramo se sale de lo ya decodificado
+    // (hasta 110 y ~48 MB), aunque se esté viendo el vídeo: al pedir la vista del GIF ya están listos. Si el tramo se estrecha,
+    // se recorta lo que hay al instante, sin decodificar.
+    LaunchedEffect(gif, start, end) {
+        if (!gif) return@LaunchedEffect
         if (live.isNotEmpty() && start >= liveStart && end <= liveEnd) return@LaunchedEffect
         liveBusy = true
         try {
-            delay(150)
+            delay(if (live.isEmpty()) 150 else 600)
             val span = end - start
             val step = max(40_000L, span / 110)
             val cnt = (span / step).toInt().coerceIn(1, 110)
             val fw = (Math.sqrt(12_000_000.0 / cnt * qm.w / qm.h).toInt() / 2 * 2).coerceIn(200, 720)
             val list = ArrayList<Bitmap>()
-            val ok = withContext(Dispatchers.IO) { FrameStrip.extract(qm.path, qm.offsetUs + start, qm.offsetUs + end, step, cnt, fw) { list.add(it) } }
+            val t0 = System.currentTimeMillis()
+            var nextPublish = 8
+            val ok = withContext(Dispatchers.IO) {
+                FrameStrip.extract(qm.path, qm.offsetUs + start, qm.offsetUs + end, step, cnt, fw) { b ->
+                    list.add(b)
+                    // Se publica lo decodificado hasta ahora (8, 16, 32… fotogramas) para que la vista previa no espere a tenerlos todos.
+                    if (list.size >= nextPublish && list.size < cnt) {
+                        nextPublish *= 2
+                        live = ArrayList(list); liveStep = step; liveStart = start; liveEnd = start + list.size * step
+                    }
+                }
+            }
+            android.util.Log.i("VixaGif", "decode " + start + "-" + end + " cnt=" + cnt + " fw=" + fw + " -> " + list.size + " fotogramas, ok=" + ok + ", " + (System.currentTimeMillis() - t0) + " ms")
             if (ok && list.isNotEmpty()) { live = list; liveStep = step; liveStart = start; liveEnd = end } else gifView = false
         } catch (e: CancellationException) {
             throw e
@@ -401,17 +452,20 @@ fun QuickEditorDialog(container: AppContainer, project: Project, gif: Boolean, o
             liveBusy = false
         }
     }
-    // El GIF exacto llega 0,8 s después del último cambio y sustituye a la aproximación (y da el tamaño real).
-    LaunchedEffect(gif, gifView, curKey, liveSlice, liveBusy, tab) {
-        if (!gif || !gifView || liveBusy || !liveReady || tab == 1) return@LaunchedEffect
+    // El GIF exacto (con giflossy) solo se genera cuando se pide, para los ajustes de ese momento: nada cambia solo mientras miras.
+    val exactWanted = exactReqKey == curKey
+    LaunchedEffect(exactWanted, curKey, liveSlice, liveBusy, tab) {
+        if (!gif || !exactWanted || liveBusy || !liveReady || tab == 1) return@LaunchedEffect
+        exactBusy = true
         try {
-            delay(800)
             val r = withContext(Dispatchers.Default) { buildExactGif(context, liveSlice, liveStep, crop, gw, gh, fpsEff, boomerang, comp, dither, loop, speed) }
             if (r != null) { exactFile = r.first; exactFrames = r.second.coerceAtLeast(1); exactBytes = r.first.length(); exactKey = curKey }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {
             ErrorLog.log("GifExact", e)
+        } finally {
+            exactBusy = false
         }
     }
 
@@ -445,7 +499,7 @@ fun QuickEditorDialog(container: AppContainer, project: Project, gif: Boolean, o
     val preview: @Composable (Modifier) -> Unit = { mod ->
         Box(mod.fillMaxWidth().background(Color.Black), contentAlignment = Alignment.Center) {
             Box(Modifier.aspectRatio(qm.w.toFloat() / qm.h).clipToBounds()) {
-                QuickPlayer(qm.path, qm.offsetUs, start, end, speed, playing && !showLive, seekReq, { pos = it }, Modifier.fillMaxSize())
+                QuickPlayer(qm.path, qm.offsetUs, start, end, speed, playing && !showLive, seekReq, { if (!showLive) pos = it }, Modifier.fillMaxSize())
                 if (!showLive && (tab == 1 || crop != CropRect())) CropBox(crop, ratioOf(ratioId), { crop = it }, tab == 1, Modifier.fillMaxSize())
             }
             if (showLive) {
@@ -453,14 +507,14 @@ fun QuickEditorDialog(container: AppContainer, project: Project, gif: Boolean, o
                     if (tab == 1) {
                         // Encuadre: el fotograma entero moviéndose (con el boomerang) y el cuadro encima.
                         Box(Modifier.aspectRatio(qm.w.toFloat() / qm.h).clipToBounds()) {
-                            LivePreview(liveSlice, liveStep, CropRect(), 4096, fpsEff, speed, boomerang, loop, comp, dither, Modifier.fillMaxSize())
+                            LivePreview(liveSlice, liveStep, CropRect(), 4096, fpsEff, speed, boomerang, loop, comp, dither, Modifier.fillMaxSize(), playing = playing, onPos = { pos = sliceStartUs + it })
                             CropBox(crop, ratioOf(ratioId), { crop = it }, true, Modifier.fillMaxSize())
                         }
                     } else {
                         val ef = exactFile
                         Box(Modifier.aspectRatio(cropW.toFloat() / cropH)) {
                             if (ef != null && exactOk) AsyncImage(ef, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
-                            else LivePreview(liveSlice, liveStep, crop, gw, fpsEff, speed, boomerang, loop, comp, dither, Modifier.fillMaxSize())
+                            else LivePreview(liveSlice, liveStep, crop, gw, fpsEff, speed, boomerang, loop, comp, dither, Modifier.fillMaxSize(), liveCache, playing, { pos = sliceStartUs + it })
                         }
                     }
                 }
@@ -538,7 +592,8 @@ fun QuickEditorDialog(container: AppContainer, project: Project, gif: Boolean, o
             if (gif) {
                 FilterChip(tab == 2, { tab = 2 }, { Text(stringResource(R.string.qe_settings)) })
                 FilterChip(boomerang, { boomerang = !boomerang }, { Text(stringResource(R.string.gif_boomerang)) })
-                FilterChip(gifView, { gifView = !gifView }, { Text(stringResource(R.string.qe_gif_preview)) })
+                FilterChip(gifView, { gifView = !gifView; scrubbing = false }, { Text(stringResource(R.string.qe_gif_preview)) })
+                FilterChip(exactOk, { exactReqKey = curKey; gifView = true; scrubbing = false }, { Text(stringResource(if (exactBusy) R.string.qe_gif_exact_busy else R.string.qe_gif_exact)) })
             }
         }
     }

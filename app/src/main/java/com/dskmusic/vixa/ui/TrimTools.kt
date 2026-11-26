@@ -101,8 +101,11 @@ fun rememberFilmstrip(path: String, offsetUs: Long, fromUs: Long, toUs: Long, co
         val first = fs.frames.isEmpty()
         if (!first) delay(150)
         val tmp = ArrayList<ImageBitmap>()
+        // Tramo largo (la tira completa de un vídeo largo): decodificarlo entero para sacar 12 fotogramas ocuparía el decodificador varios
+        // segundos y frenaría lo demás. Se piden fotogramas clave sueltos (sirven de miniatura). Con zoom (tramo corto) se decodifica exacto.
+        val longSpan = toUs - fromUs > 10_000_000L
         try {
-            val ok = withContext(Dispatchers.IO) {
+            val ok = !longSpan && withContext(Dispatchers.IO) {
                 FrameStrip.extract(path, offsetUs + fromUs, offsetUs + toUs, ((toUs - fromUs) / count).coerceAtLeast(1), count, 120) { b ->
                     tmp.add(b.asImageBitmap())
                     if (first) { fs.from = fromUs; fs.to = toUs; fs.frames = tmp.toList() }
@@ -117,8 +120,9 @@ fun rememberFilmstrip(path: String, offsetUs: Long, fromUs: Long, toUs: Long, co
                         r.setDataSource(path)
                         for (i in 0 until count) {
                             val t = fromUs + (toUs - fromUs) * (2 * i + 1) / (2 * count)
-                            val b = r.getFrameAtTime(offsetUs + t, MediaMetadataRetriever.OPTION_CLOSEST) ?: continue
+                            val b = r.getFrameAtTime(offsetUs + t, if (longSpan) MediaMetadataRetriever.OPTION_CLOSEST_SYNC else MediaMetadataRetriever.OPTION_CLOSEST) ?: continue
                             tmp.add(Bitmap.createScaledBitmap(b, 120, (120L * b.height / b.width.coerceAtLeast(1)).toInt().coerceAtLeast(1), true).asImageBitmap())
+                            if (first) { fs.from = fromUs; fs.to = toUs; fs.frames = tmp.toList() }
                         }
                     } finally {
                         r.release()

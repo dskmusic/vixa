@@ -67,6 +67,14 @@ android {
         }
     }
 
+    // giflossy (gifsicle con --lossy): biblioteca nativa para comprimir los GIF. Requiere NDK y CMake 3.22.1 (SDK Manager).
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
+
     buildTypes {
         // Debug sin minificación; release con R8 (código y recursos recortados). Reglas en proguard-rules.pro.
         // La variante debug (Run ▶ de Android Studio) lleva otro nombre de paquete (.debug) y se instala a la vez que la release.

@@ -46,6 +46,12 @@ object FrameStrip {
             var outDone = false
             var next = startUs
             var count = 0
+            // Mediciones (adb logcat -s FrameStrip): decodificador, fotogramas decodificados en total y tiempo gastado en convertir a bitmap.
+            val tStart = System.nanoTime()
+            var fed = 0
+            var outTotal = 0
+            var convNs = 0L
+            var firstOutMs = -1L
             while (!outDone && count < maxFrames) {
                 coroutineContext.ensureActive()
                 if (!inDone) {
@@ -58,22 +64,28 @@ object FrameStrip {
                         } else {
                             c.queueInputBuffer(ii, 0, n, ex.sampleTime, 0)
                             ex.advance()
+                            fed++
                         }
                     }
                 }
                 val oi = c.dequeueOutputBuffer(info, 5_000)
                 if (oi < 0) continue
                 val pts = info.presentationTimeUs
+                outTotal++
+                if (firstOutMs < 0) firstOutMs = (System.nanoTime() - tStart) / 1_000_000L
                 if (info.size > 0 && pts >= next && pts <= endUs) {
                     val img = c.getOutputImage(oi)
                     if (img == null || img.format != ImageFormat.YUV_420_888) { img?.close(); c.releaseOutputBuffer(oi, false); return false }
+                    val tc = System.nanoTime()
                     try { onFrame(toBitmap(img, displayW, rotation)) } finally { img.close() }
+                    convNs += System.nanoTime() - tc
                     count++
                     while (next <= pts) next += stepUs
                 }
                 c.releaseOutputBuffer(oi, false)
                 if (pts > endUs || info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) outDone = true
             }
+            android.util.Log.i("FrameStrip", c.name + ": entrada=" + fed + " salida=" + outTotal + " convertidos=" + count + " primer fotograma a los " + firstOutMs + " ms, conversion " + convNs / 1_000_000L + " ms, total " + (System.nanoTime() - tStart) / 1_000_000L + " ms")
             return count > 0
         } finally {
             try { codec?.stop() } catch (e: Throwable) { }
@@ -94,15 +106,17 @@ object FrameStrip {
         val ow = if (turned) dh else dw
         val oh = if (turned) dw else dh
         val yP = img.planes[0]; val uP = img.planes[1]; val vP = img.planes[2]
-        val yb = yP.buffer; val ub = uP.buffer; val vb = vP.buffer
+        val yb = ByteArray(yP.buffer.remaining()).also { yP.buffer.get(it) }
+        val ub = ByteArray(uP.buffer.remaining()).also { uP.buffer.get(it) }
+        val vb = ByteArray(vP.buffer.remaining()).also { vP.buffer.get(it) }
         val px = IntArray(ow * oh)
         for (ty in 0 until oh) {
             val sy = crop.top + ty * ih / oh
             for (tx in 0 until ow) {
                 val sx = crop.left + tx * iw / ow
-                val y = (yb.get(sy * yP.rowStride + sx * yP.pixelStride).toInt() and 0xFF) - 16
-                val u = (ub.get((sy shr 1) * uP.rowStride + (sx shr 1) * uP.pixelStride).toInt() and 0xFF) - 128
-                val v = (vb.get((sy shr 1) * vP.rowStride + (sx shr 1) * vP.pixelStride).toInt() and 0xFF) - 128
+                val y = (yb[sy * yP.rowStride + sx * yP.pixelStride].toInt() and 0xFF) - 16
+                val u = (ub[(sy shr 1) * uP.rowStride + (sx shr 1) * uP.pixelStride].toInt() and 0xFF) - 128
+                val v = (vb[(sy shr 1) * vP.rowStride + (sx shr 1) * vP.pixelStride].toInt() and 0xFF) - 128
                 val c = 298 * y
                 val r = ((c + 409 * v + 128) shr 8).coerceIn(0, 255)
                 val g = ((c - 100 * u - 208 * v + 128) shr 8).coerceIn(0, 255)

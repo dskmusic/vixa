@@ -447,7 +447,8 @@ class Exporter(context: Context) {
             val back = if (s.boomerang && total > 2) total - 2 else 0
             val steps = (total + back).coerceAtLeast(1)
             FileOutputStream(out).buffered().use { os ->
-                val enc = GifEncoder(os, w, h, fps, s.gifCompression, s.gifDither, s.gifLoop, s.gifSpeed)
+                // Con giflossy disponible, el codificador no pierde calidad por su cuenta: la compresion la hace giflossy despues.
+                val enc = GifEncoder(os, w, h, fps, if (GifLossy.available && s.gifCompression >= 1) 0 else s.gifCompression, s.gifDither, s.gifLoop, s.gifSpeed)
                 for (n in 0 until total + back) {
                     if (cancelled) break
                     val i = if (n < total) n else total - 2 - (n - total)
@@ -458,6 +459,7 @@ class Exporter(context: Context) {
                 }
                 enc.finish()
             }
+            if (!cancelled && s.gifCompression >= 1) GifLossy.shrink(out, s.gifCompression)
         } finally {
             r.release()
         }

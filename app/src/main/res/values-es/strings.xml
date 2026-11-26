@@ -1621,4 +1621,6 @@
     <string name="wa_share">Compartir en WhatsApp</string>
     <string name="wa_hint">Las partes se llaman _1deN, _2deN… para que queden en orden. Si WhatsApp las desordena, elígelas una a una en ese orden.</string>
     <string name="split_title">Exportando en partes de hasta %1$d s</string>
+    <string name="qe_gif_exact">Resultado exacto</string>
+    <string name="qe_gif_exact_busy">Calculando…</string>
 </resources>
