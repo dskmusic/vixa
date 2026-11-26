@@ -74,3 +74,21 @@ desktop.ini
 #    *.psd
 # =====================================================================================
 
+
+# =====================================================================================
+#  Solo código y lo necesario para compilar: fuera scripts y documentos personales
+# =====================================================================================
+*.bat
+!gradlew.bat
+*.cmd
+*.ps1
+*.py
+*.pyw
+*.md
+!README.md
+!README.es.md
+!README.en.md
+# La ayuda integrada de la app (help_es.md / help_en.md) se lee desde assets: sí se sube.
+!app/src/main/assets/**/*.md
+hs_err_pid*
+replay_pid*
