@@ -1591,7 +1591,26 @@
     <string name="morph_photo">Foto %1$d</string>
     <string name="morph_mode_points">Puntos</string>
     <string name="morph_mode_frame">Encuadre</string>
-    <string name="morph_hint_points">Toca para añadir un punto en todas las fotos y arrástralo en cada una hasta el mismo rasgo (ojo con ojo). Mantén pulsado un punto para borrarlo. Tus puntos: %1$d</string>
+    <string name="morph_hint_points">Toca para añadir un punto en todas las fotos y arrástralo en cada una hasta el mismo rasgo (ojo con ojo). Arrastra cualquier punto para moverlo, también los de la cara. Mantén pulsado uno tuyo para borrarlo. Tus puntos: %1$d</string>
     <string name="morph_hint_frame">Pellizca, gira y arrastra para encuadrar esta foto.</string>
     <string name="morph_hold">Pausa en cada foto (pasos)</string>
+    <string name="qe_type_time">Escribe el tiempo</string>
+    <string name="qe_ratio_free">Libre</string>
+    <string name="qe_ratio_orig">Original</string>
+    <string name="qe_all">Todo</string>
+    <string name="qe_start">Inicio</string>
+    <string name="qe_end">Fin</string>
+    <string name="qe_time">Tiempo</string>
+    <string name="qe_frame">Encuadre</string>
+    <string name="qe_settings">Ajustes</string>
+    <string name="qe_gif_info">%1$d fotogramas · %2$s · ~%3$s</string>
+    <string name="qe_trim_info">Original: %1$s, %2$s  →  Editado: %3$s, ~%4$s</string>
+    <string name="qe_size_dims">Original: %1$d×%2$d  ·  Editado: ~%3$d×%4$d</string>
+    <string name="qe_max_frames">Máx. fotog.</string>
+    <string name="qe_max_frames_hint">Más fotogramas hacen el GIF más suave (y pesado). Si se pasa, se baja la velocidad de fotogramas.</string>
+    <string name="qe_visual_crop">Encuadrar con el cuadro</string>
+    <string name="qe_fps">FPS</string>
+    <string name="qe_trim_hint">Pellizca con dos dedos para ampliar la tira y elegir con precisión. Con zoom, arrastra con un dedo para desplazarte por ella; sin zoom, arrastrar mueve toda la selección. Toca el ×N para volver al 100 %.</string>
+    <string name="qe_ratio_flip_hint">Pulsa de nuevo un preset para girarlo (3:4 ↔ 4:3).</string>
+    <string name="qe_gif_preview">Vista GIF</string>
 </resources>

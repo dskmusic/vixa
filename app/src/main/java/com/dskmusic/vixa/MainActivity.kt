@@ -172,9 +172,7 @@ class MainActivity : AppCompatActivity() {
         val settings = container.settings.value
         // Primera ejecución: tutorial. Si el sistema mató la app con un proyecto abierto, se restaura.
         val start = remember { if (!settings.tutorialSeen) "tutorial" else "home" }
-        // Proyecto demo: se prepara desde el arranque (en segundo plano) mientras el usuario ve el tutorial.
-        val appContext = androidx.compose.ui.platform.LocalContext.current.applicationContext
-        LaunchedEffect(Unit) { com.dskmusic.vixa.engine.DemoSeeder.start(appContext, container) }
+        // El proyecto demo ya no se crea en el primer arranque: solo a demanda, desde el menú de ayuda (ver HomeScreen.startDemo).
         val pending by incoming.collectAsState()
         LaunchedEffect(Unit) {
             val open = container.settings.value.openProjectId

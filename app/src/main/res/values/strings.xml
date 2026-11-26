@@ -1592,7 +1592,26 @@
     <string name="morph_photo">Photo %1$d</string>
     <string name="morph_mode_points">Points</string>
     <string name="morph_mode_frame">Framing</string>
-    <string name="morph_hint_points">Tap to add a point in every photo, then drag it on each photo to the same feature (eye on eye). Long-press a point to delete it. Your points: %1$d</string>
+    <string name="morph_hint_points">Tap to add a point in every photo, then drag it on each photo to the same feature (eye on eye). Drag any point to move it, face points too. Long-press one of yours to delete it. Your points: %1$d</string>
     <string name="morph_hint_frame">Pinch, rotate and drag to frame this photo.</string>
     <string name="morph_hold">Hold on each photo (steps)</string>
+    <string name="qe_type_time">Type the time</string>
+    <string name="qe_ratio_free">Free</string>
+    <string name="qe_ratio_orig">Original</string>
+    <string name="qe_all">All</string>
+    <string name="qe_start">Start</string>
+    <string name="qe_end">End</string>
+    <string name="qe_time">Time</string>
+    <string name="qe_frame">Framing</string>
+    <string name="qe_settings">Settings</string>
+    <string name="qe_gif_info">%1$d frames · %2$s · ~%3$s</string>
+    <string name="qe_trim_info">Original: %1$s, %2$s  →  Edited: %3$s, ~%4$s</string>
+    <string name="qe_size_dims">Original: %1$d×%2$d  ·  Edited: ~%3$d×%4$d</string>
+    <string name="qe_max_frames">Max frames</string>
+    <string name="qe_max_frames_hint">More frames make the GIF smoother (and heavier). The frame rate is lowered if it would go over this.</string>
+    <string name="qe_visual_crop">Frame visually</string>
+    <string name="qe_fps">FPS</string>
+    <string name="qe_trim_hint">Pinch with two fingers to zoom the strip and choose precisely. With zoom, drag with one finger to scroll along it; without zoom, dragging moves the whole selection. Tap the ×N badge to go back to 100%.</string>
+    <string name="qe_ratio_flip_hint">Tap a preset again to rotate it (3:4 ↔ 4:3).</string>
+    <string name="qe_gif_preview">GIF preview</string>
 </resources>

@@ -162,12 +162,17 @@ Shortcuts for simple tasks, without opening the full editor:
 |---|---|
 | {icon:Compress} **Compress video** | Reduces the size of a video. |
 | {icon:SwapHoriz} **Convert format** | Switches to video, audio or GIF. |
-| {icon:ContentCut} **Trim** | Cuts the beginning and the end. |
+| {icon:ContentCut} **Trim** | Cuts the beginning and the end, or the frame (aspect ratio) of the video. |
 | {icon:MusicNote} **Extract audio** | Saves the sound as an audio file. |
 | {icon:Gif} **Video to GIF** | Turns a section into a GIF. |
 | {icon:Merge} **Join videos** | Joins several videos into one. |
 
-You pick the file and the export window opens already set up for that task.
+You pick the file and the export window opens already set up for that task. **Trim** and **Video to GIF** open an editing screen first:
+
+- **Time:** drag the white handles on the filmstrip to choose start and end. **−** and **+** adjust frame by frame (hold to repeat) and tapping the time lets you type it to the millisecond. There are shortcuts for 2, 3, 5, 10 and 30 s.
+- **Framing:** a box with a grid that moves and resizes from its corners and edges, with presets (free, original, 1:1, 4:5, 9:16, 16:9, 4:3, 3:4, 3:2 and 2:3). With a preset it keeps the ratio. Below you see the original and resulting size.
+- **Settings (GIF):** width, frames per second, **max frames**, compression, speed, dithering and loop. The **Boomerang** (back and forth) button is always at hand, and at the top you see how many frames the GIF will have and how big it will be.
+- Tap ✓ to finish: in Trim the export window follows; in GIF it starts creating the file right away.
 
 ## Your projects
 

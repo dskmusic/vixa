@@ -113,9 +113,12 @@ fun PreciseSlider(
     format: (Float) -> String = { String.format(Locale.US, "%.0f", it * 100f) },
     /** Factor entre el valor mostrado en la entrada numérica y el valor real. */
     inputScale: Float = 100f,
+    /** Tamaño del asa del deslizador (null = el de Material). Más baja, no se pisa con el deslizador de al lado. */
+    thumbSize: androidx.compose.ui.unit.DpSize? = null,
     trailing: @Composable (() -> Unit)? = null,
 ) {
     var editing by remember { mutableStateOf(false) }
+    val thumbSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     // Una sola fila: nombre (ancho fijo, con puntos suspensivos), deslizador y valor. Doble toque: valor por defecto.
     Row(
         modifier.fillMaxWidth().padding(horizontal = 12.dp).combinedClickable(onClick = {}, onDoubleClick = { onChange(default); onFinished() }),
@@ -128,6 +131,8 @@ fun PreciseSlider(
             valueRange = range,
             onValueChangeFinished = onFinished,
             modifier = Modifier.weight(1f).height(36.dp),
+            interactionSource = thumbSource,
+            thumb = { if (thumbSize == null) androidx.compose.material3.SliderDefaults.Thumb(thumbSource) else androidx.compose.material3.SliderDefaults.Thumb(thumbSource, thumbSize = thumbSize) },
         )
         if (trailing != null) trailing()
         Text(

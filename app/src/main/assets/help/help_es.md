@@ -162,12 +162,17 @@ Atajos para tareas sencillas, sin abrir el editor completo:
 |---|---|
 | {icon:Compress} **Comprimir vídeo** | Reduce el tamaño de un vídeo. |
 | {icon:SwapHoriz} **Convertir formato** | Cambia a vídeo, audio o GIF. |
-| {icon:ContentCut} **Recortar** | Corta el principio y el final. |
+| {icon:ContentCut} **Recortar** | Corta el principio y el final, o el encuadre (proporción) del vídeo. |
 | {icon:MusicNote} **Extraer audio** | Guarda el sonido como archivo de audio. |
 | {icon:Gif} **Vídeo a GIF** | Convierte un tramo en un GIF. |
 | {icon:Merge} **Unir vídeos** | Une varios vídeos en uno. |
 
-Eliges el archivo y se abre la ventana de exportación ya configurada para esa tarea.
+Eliges el archivo y se abre la ventana de exportación ya configurada para esa tarea. **Recortar** y **Vídeo a GIF** abren antes una pantalla de edición:
+
+- **Tiempo:** arrastra los tiradores blancos de la tira de fotogramas para elegir inicio y fin. Con **−** y **+** ajustas de fotograma en fotograma (mantén pulsado para repetir) y, tocando el tiempo, lo escribes al milisegundo. Hay atajos de 2, 3, 5, 10 y 30 s.
+- **Encuadre:** un cuadro con rejilla que se mueve y se redimensiona desde las esquinas y los bordes, con presets (libre, original, 1:1, 4:5, 9:16, 16:9, 4:3, 3:4, 3:2 y 2:3). Con un preset conserva la proporción. Abajo ves el tamaño original y el resultante.
+- **Ajustes (GIF):** ancho, fotogramas por segundo, **fotogramas máximos**, compresión, velocidad, tramado y bucle. El botón **Boomerang** (ida y vuelta) está siempre a mano, y arriba ves cuántos fotogramas tendrá el GIF y cuánto pesará.
+- Pulsa ✓ para terminar: en Recortar sigue la ventana de exportación; en GIF empieza a crearse directamente.
 
 ## Tus proyectos
 

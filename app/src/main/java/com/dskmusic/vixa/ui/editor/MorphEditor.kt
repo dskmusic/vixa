@@ -4,8 +4,18 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Redo
+import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -13,6 +23,7 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.material3.FilterChip
@@ -65,12 +76,22 @@ fun MorphEditorDialog(vm: EditorViewModel, clipId: String, onDismiss: () -> Unit
     val base = MorphMath.baseOf(spec)
     val bitmaps = remember(initial) { initial.images.map { BitmapFactory.decodeFile(it.path) } }
     val cnt = spec.images[0].pts.size / 2
+    val landscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+
+    // Deshacer / rehacer: copias del morph entero. Los gestos continuos (encuadre, deslizador) se agrupan en una sola entrada.
+    val undo = remember { mutableStateListOf<MorphSpec>() }
+    val redo = remember { mutableStateListOf<MorphSpec>() }
+    var lastMerge by remember { mutableLongStateOf(0L) }
+    fun push() { undo.add(spec); if (undo.size > 60) undo.removeAt(0); redo.clear() }
+    fun pushMerged() { val n = System.currentTimeMillis(); if (n - lastMerge > 500) push(); lastMerge = n }
+    fun doUndo() { if (undo.isNotEmpty()) { redo.add(spec); spec = undo.removeAt(undo.lastIndex) } }
+    fun doRedo() { if (redo.isNotEmpty()) { undo.add(spec); spec = redo.removeAt(redo.lastIndex) } }
 
     fun setImage(i: Int, f: (MorphImage) -> MorphImage) { spec = spec.copy(images = spec.images.mapIndexed { j, m -> if (j == i) f(m) else m }) }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            val header: @Composable () -> Unit = {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                     TextButton(onDismiss) { Text(stringResource(R.string.cancel)) }
                     Text(stringResource(R.string.morph_edit), style = MaterialTheme.typography.titleMedium)
@@ -79,16 +100,24 @@ fun MorphEditorDialog(vm: EditorViewModel, clipId: String, onDismiss: () -> Unit
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     for (i in spec.images.indices) FilterChip(cur == i, { cur = i }, { Text(stringResource(R.string.morph_photo, i + 1)) })
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     FilterChip(!frameMode, { frameMode = false }, { Text(stringResource(R.string.morph_mode_points)) })
                     FilterChip(frameMode, { frameMode = true }, { Text(stringResource(R.string.morph_mode_frame)) })
+                    Spacer(Modifier.weight(1f))
+                    IconButton(::doUndo, enabled = undo.isNotEmpty()) { Icon(Icons.AutoMirrored.Filled.Undo, stringResource(R.string.undo)) }
+                    IconButton(::doRedo, enabled = redo.isNotEmpty()) { Icon(Icons.AutoMirrored.Filled.Redo, stringResource(R.string.redo)) }
                 }
+            }
+            val canvasBlock: @Composable (Modifier) -> Unit = { mod ->
                 val img = spec.images[cur]
                 val bmp = bitmaps[cur]
+                // La foto ocupa solo el hueco que dejan los controles (sin desbordar); los controles quedan debajo.
+                Box(mod.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Canvas(
-                    Modifier.fillMaxWidth().aspectRatio(ar).clipToBounds()
+                    Modifier.aspectRatio(ar).clipToBounds()
                         .pointerInput(frameMode, cur) {
                             if (frameMode) detectTransformGestures { _, pan, zoom, rotDeg ->
+                                pushMerged()
                                 setImage(cur) { m ->
                                     val cropH = m.ch * m.h
                                     val dx = pan.x / size.width * cropH * ar
@@ -105,14 +134,17 @@ fun MorphEditorDialog(vm: EditorViewModel, clipId: String, onDismiss: () -> Unit
                         .pointerInput(frameMode, cur) {
                             if (!frameMode) detectTapGestures(
                                 onTap = { o ->
-                                    // Punto nuevo en el sitio equivalente de cada foto (mismo punto del fotograma encuadrado).
+                                    // Tocar un punto que ya existe no crea otro (se arrastra para moverlo).
                                     val qx = o.x / size.width; val qy = o.y / size.height
+                                    if (nearestPoint(spec, cur, ar, base, qx, qy, 40.dp.toPx() / size.width) >= 0) return@detectTapGestures
+                                    // Punto nuevo en el sitio equivalente de cada foto (mismo punto del fotograma encuadrado).
+                                    push()
                                     val uv = FloatArray(2)
                                     spec = spec.copy(images = spec.images.map { m -> MorphMath.qToUv(m, ar, qx, qy, uv, 0); m.copy(pts = m.pts + uv[0] + uv[1]) })
                                 },
                                 onLongPress = { o ->
                                     val k = nearestUser(spec, cur, ar, base, o.x / size.width, o.y / size.height, 40.dp.toPx() / size.width)
-                                    if (k >= 0) spec = spec.copy(images = spec.images.map { m -> m.copy(pts = m.pts.filterIndexed { i, _ -> i / 2 != k }) })
+                                    if (k >= 0) { push(); spec = spec.copy(images = spec.images.map { m -> m.copy(pts = m.pts.filterIndexed { i, _ -> i / 2 != k }) }) }
                                 },
                             )
                         }
@@ -120,7 +152,10 @@ fun MorphEditorDialog(vm: EditorViewModel, clipId: String, onDismiss: () -> Unit
                             if (!frameMode) {
                                 var k = -1
                                 detectDragGestures(
-                                    onDragStart = { o -> k = nearestUser(spec, cur, ar, base, o.x / size.width, o.y / size.height, 40.dp.toPx() / size.width) },
+                                    onDragStart = { o ->
+                                        k = nearestPoint(spec, cur, ar, base, o.x / size.width, o.y / size.height, 40.dp.toPx() / size.width)
+                                        if (k >= 0) push()
+                                    },
                                     onDragEnd = { k = -1 }, onDragCancel = { k = -1 },
                                 ) { change, _ ->
                                     if (k >= 0) {
@@ -152,27 +187,52 @@ fun MorphEditorDialog(vm: EditorViewModel, clipId: String, onDismiss: () -> Unit
                         }
                     }
                 }
+                }
+            }
+            val footer: @Composable () -> Unit = {
                 Text(
                     stringResource(if (frameMode) R.string.morph_hint_frame else R.string.morph_hint_points, cnt - base),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(stringResource(R.string.morph_hold) + ": " + (Math.round(spec.hold * 100) / 100f))
-                Slider(spec.hold, { spec = spec.copy(hold = it) }, valueRange = 0f..1f)
+                Slider(spec.hold, { pushMerged(); spec = spec.copy(hold = it) }, valueRange = 0f..1f)
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(stringResource(R.string.morph_ping)); Switch(spec.pingPong, { spec = spec.copy(pingPong = it) })
+                    Text(stringResource(R.string.morph_ping)); Switch(spec.pingPong, { push(); spec = spec.copy(pingPong = it) })
+                }
+            }
+            if (landscape) {
+                // Horizontal: la foto a la izquierda y los controles en una columna a la derecha.
+                Row(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    canvasBlock(Modifier.weight(1f).fillMaxHeight())
+                    Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) { header(); footer() }
+                }
+            } else {
+                Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    header()
+                    canvasBlock(Modifier.weight(1f))
+                    footer()
                 }
             }
         }
     }
 }
 
-/** Indice (entre los puntos del usuario, no los de la cara) del mas cercano a (qx,qy) en la foto [cur], o -1 si ninguno esta a menos de [r] (en anchos). */
-private fun nearestUser(spec: MorphSpec, cur: Int, ar: Float, base: Int, qx: Float, qy: Float, r: Float): Int {
+/** Punto mas cercano a (qx,qy) en la foto [cur]: primero entre los del usuario (radio [r], en anchos) y, si no hay, entre los de la cara (radio mas pequeno). -1 si ninguno. */
+private fun nearestPoint(spec: MorphSpec, cur: Int, ar: Float, base: Int, qx: Float, qy: Float, r: Float): Int {
+    val u = nearestIn(spec, cur, ar, base, spec.images[cur].pts.size / 2, qx, qy, r)
+    return if (u >= 0) u else nearestIn(spec, cur, ar, 0, base, qx, qy, r * 0.5f)
+}
+
+/** Indice (entre los puntos del usuario, no los de la cara) del mas cercano, o -1. Para borrar. */
+private fun nearestUser(spec: MorphSpec, cur: Int, ar: Float, base: Int, qx: Float, qy: Float, r: Float): Int =
+    nearestIn(spec, cur, ar, base, spec.images[cur].pts.size / 2, qx, qy, r)
+
+private fun nearestIn(spec: MorphSpec, cur: Int, ar: Float, from: Int, to: Int, qx: Float, qy: Float, r: Float): Int {
     val m = spec.images[cur]
     val q = FloatArray(2)
     var best = -1
     var bestD = r
-    for (k in base until m.pts.size / 2) {
+    for (k in from until to) {
         MorphMath.uvToQ(m, ar, m.pts[k * 2], m.pts[k * 2 + 1], q, 0)
         val d = hypot(q[0] - qx, (q[1] - qy) / ar)
         if (d < bestD) { bestD = d; best = k }

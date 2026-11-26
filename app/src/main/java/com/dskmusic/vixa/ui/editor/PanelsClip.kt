@@ -287,6 +287,10 @@ fun TransformPanel(vm: EditorViewModel, c: Clip) {
 fun CropPanel(vm: EditorViewModel, c: Clip) {
     val tr = c.transform
     fun set(f: (Transform, Float) -> Transform): (Float) -> Unit = { v -> vm.updateClip(R.string.hist_crop, c.id, live = true) { it.copy(transform = f(it.transform, v)) } }
+    // Encuadre visual: el cuadro se arrastra sobre un fotograma, con presets de proporción (los deslizadores quedan para el ajuste fino).
+    var visual by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    if (visual) ClipCropDialog(vm, c) { visual = false }
+    if (c.media != null) OutlinedButton({ visual = true }, Modifier.padding(horizontal = 12.dp)) { Text(stringResource(R.string.qe_visual_crop)) }
     PreciseSlider(stringResource(R.string.crop_left), tr.cropL, set { t, v -> t.copy(cropL = v) }, range = 0f..0.48f, onFinished = { vm.commit() })
     PreciseSlider(stringResource(R.string.crop_right), tr.cropR, set { t, v -> t.copy(cropR = v) }, range = 0f..0.48f, onFinished = { vm.commit() })
     PreciseSlider(stringResource(R.string.crop_top), tr.cropT, set { t, v -> t.copy(cropT = v) }, range = 0f..0.48f, onFinished = { vm.commit() })

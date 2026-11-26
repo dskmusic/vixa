@@ -156,6 +156,8 @@ fun HomeScreen(
     var quick by remember { mutableStateOf<QuickTool?>(null) }
     var quickProject by remember { mutableStateOf<Project?>(null) }
     var quickTool by remember { mutableStateOf<QuickTool?>(null) }
+    // GIF y Recortar: primero la pantalla de edición (tiradores, encuadre); al confirmar sigue el diálogo de exportación.
+    var quickEdited by remember { mutableStateOf(false) }
     var aiTool by remember { mutableStateOf<Pair<String, String>?>(null) }
     var aiResult by remember { mutableStateOf<AiQuickResult?>(null) }
     CollectAiMessages(container) { error = it }
@@ -292,7 +294,7 @@ fun HomeScreen(
                         // Dos por fila: icono, nombre completo y una línea que explica para qué sirve cada herramienta.
                         androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), maxItemsInEachRow = 2) {
                             for (t in tools) Surface(
-                                Modifier.weight(1f).height(68.dp).clip(RoundedCornerShape(12.dp)).clickable { quickProject = null; quick = t },
+                                Modifier.weight(1f).height(68.dp).clip(RoundedCornerShape(12.dp)).clickable { quickProject = null; quickTool = null; quickEdited = false; quick = t },
                                 shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceContainer,
                             ) {
                                 Row(Modifier.fillMaxSize().padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -445,7 +447,7 @@ fun HomeScreen(
                 scope.launch {
                     val p = projectFromMedia(context, container, paths)
                     busy = false
-                    if (p == null || p.durationUs <= 0) { error = context.getString(R.string.err_unsupported_media, ""); quick = null } else { quickTool = t; quickProject = p }
+                    if (p == null || p.durationUs <= 0) { error = context.getString(R.string.err_unsupported_media, ""); quick = null } else { quickTool = t; quickEdited = false; quickProject = p }
                 }
             }
         }
@@ -465,7 +467,12 @@ fun HomeScreen(
     }
     val qp = quickProject
     val qt = quickTool
-    if (qp != null && qt != null) {
+    if (qp != null && qt != null && (qt.id == "gif" || qt.id == "trim") && !quickEdited && quickMediaOf(qp) != null) {
+        // key(): cada vídeo abre un editor nuevo, sin arrastrar el tramo, el zoom ni los ajustes de la vez anterior.
+        androidx.compose.runtime.key(qp.id) {
+            QuickEditorDialog(container, qp, gif = qt.id == "gif", onDismiss = { quickProject = null; quickTool = null; quick = null; quickEdited = false }) { p -> quickProject = p; quickEdited = true }
+        }
+    } else if (qp != null && qt != null) {
         val short = minOf(qp.width, qp.height)
         val nearest = listOf(480, 720, 1080, 1440, 2160).lastOrNull { it <= short } ?: 480
         val base = ExportSettings(shortSide = nearest, fps = qp.fps)
@@ -477,7 +484,7 @@ fun HomeScreen(
             else -> base to listOf(ExportKind.VIDEO)
         }
         // Recortar y GIF abren con el rango activado: es lo primero que hay que ajustar.
-        ExportDialog(container, qp, 0L, onDismiss = { quickProject = null; quickTool = null; quick = null }, initial = initial, allowedKinds = kinds, initialRange = qt.id == "trim" || qt.id == "gif")
+        ExportDialog(container, qp, 0L, onDismiss = { quickProject = null; quickTool = null; quick = null; quickEdited = false }, initial = initial, allowedKinds = kinds, initialRange = (qt.id == "trim" || qt.id == "gif") && !quickEdited)
     }
     // Ventana cuadrada de bordes redondeados con un spinner mientras se prepara el proyecto demo (no se puede cerrar).
     if (demoBusy) androidx.compose.ui.window.Dialog(onDismissRequest = {}, properties = androidx.compose.ui.window.DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)) {
