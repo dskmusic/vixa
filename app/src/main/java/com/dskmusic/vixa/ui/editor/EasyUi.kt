@@ -67,3 +67,15 @@ object Sp {
     val l = 16.dp
     val xl = 24.dp
 }
+
+/** Color de cada familia de herramientas en la barra inferior del modo Normal (texto, pegatinas, sonido, color, movimiento, IA). */
+fun toolAccent(id: String): androidx.compose.ui.graphics.Color = when (id) {
+    "text", "templates", "subtitles" -> androidx.compose.ui.graphics.Color(0xFFB066FF)
+    "stickers" -> androidx.compose.ui.graphics.Color(0xFFFF4FA3)
+    "audio", "voiceover", "volume", "audiofx" -> androidx.compose.ui.graphics.Color(0xFF19D3C5)
+    "adjlayer", "filter", "adjust", "effects", "fxlayer" -> androidx.compose.ui.graphics.Color(0xFFFFB02E)
+    "transform", "crop", "speed", "transition", "animation", "split", "dup", "replace" -> androidx.compose.ui.graphics.Color(0xFF3DA5FF)
+    "ai" -> androidx.compose.ui.graphics.Color(0xFF4CD9A0)
+    "add" -> androidx.compose.ui.graphics.Color(0xFFFF7A59)
+    else -> androidx.compose.ui.graphics.Color.Unspecified
+}

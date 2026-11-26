@@ -1,5 +1,7 @@
 package com.dskmusic.vixa.ui
 
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.foundation.clickable
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -137,6 +139,11 @@ fun ExportDialog(
     var rangeOn by remember { mutableStateOf(startRange) }
     // El bucle de vista previa solo se reconstruye al soltar un deslizador: lo que se ve es lo que tendrá el archivo.
     var committed by remember { mutableStateOf(s.rangeStartUs to s.rangeEndUs) }
+    // Modo Normal (Pro apagado): exportación sencilla (tipo y calidad en tres opciones). Pro (y las herramientas rápidas) enseñan todo.
+    val simpleExport = !app.proMode && !initialRange && allowedKinds.size == ExportKind.entries.size
+    androidx.compose.runtime.LaunchedEffect(simpleExport) {
+        if (simpleExport && s.kind == ExportKind.VIDEO && s.shortSide !in listOf(720, 1080, 1440)) s = s.copy(shortSide = 1080, quality = Quality.HIGH, codec = VideoCodec.H264, container = Container.MP4, passthrough = false)
+    }
     val durUs = project.durationUs
     val outDir = s.outDir.ifEmpty { com.dskmusic.vixa.data.Storage.exportDir(app.exportDir, s.kind).path }
 
@@ -221,6 +228,32 @@ fun ExportDialog(
                     }
                 } else {
                     Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+                        if (simpleExport) {
+                            ChipRow(listOf(ExportKind.VIDEO, ExportKind.GIF, ExportKind.FRAME_JPG), s.kind, { stringResource(when (it) { ExportKind.VIDEO -> R.string.kind_video; ExportKind.GIF -> R.string.kind_gif; else -> R.string.kind_jpg }) }) { k -> s = s.copy(kind = k) }
+                            if (s.kind == ExportKind.VIDEO) {
+                                SectionTitle(stringResource(R.string.quality))
+                                Column(Modifier.padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    for ((px, title, desc) in listOf(Triple(720, R.string.exp_light, R.string.exp_light_d), Triple(1080, R.string.exp_normal, R.string.exp_normal_d), Triple(1440, R.string.exp_high, R.string.exp_high_d))) {
+                                        val sel = s.shortSide == px
+                                        androidx.compose.material3.Surface(
+                                            Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable { s = s.copy(shortSide = px, quality = if (px == 720) Quality.MEDIUM else Quality.HIGH, codec = VideoCodec.H264, container = Container.MP4, passthrough = false) },
+                                            shape = RoundedCornerShape(16.dp), color = if (sel) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        ) {
+                                            Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                                                Column(Modifier.weight(1f)) {
+                                                    Text(stringResource(title), style = MaterialTheme.typography.titleMedium)
+                                                    Text(stringResource(desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                }
+                                                if (sel) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            SectionTitle(stringResource(R.string.file_name))
+                            OutlinedTextField(s.fileName, { s = s.copy(fileName = it) }, Modifier.fillMaxWidth().padding(horizontal = 12.dp), singleLine = true,
+                                placeholder = { Text(project.name.ifBlank { "Vixa" }) }, suffix = { Text("." + s.extension) })
+                        } else {
                         if (allowedKinds.size > 1) {
                             ChipRow(allowedKinds, s.kind, { stringResource(when (it) { ExportKind.VIDEO -> R.string.kind_video; ExportKind.AUDIO -> R.string.kind_audio; ExportKind.GIF -> R.string.kind_gif; ExportKind.FRAME_PNG -> R.string.kind_png; ExportKind.FRAME_JPG -> R.string.kind_jpg }) }) { k -> s = s.copy(kind = k) }
                         }
@@ -282,6 +315,7 @@ fun ExportDialog(
                         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text(outDir, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
                             TextButton({ folder = true }) { Text(stringResource(R.string.change)) }
+                        }
                         }
                     }
                     // Estimación y botón.

@@ -325,7 +325,7 @@ fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit,
         val toolsScroll = rememberScrollState()
         ScrollHintEffect(toolsScroll, "tools:" + (clip != null))
         Row(Modifier.fillMaxWidth().horizontalScroll(toolsScroll).padding(horizontal = 4.dp, vertical = 2.dp)) {
-            for (t in tools) ToolButton(t.icon, stringResource(t.label), selected = tool == t.id, onClick = t.action ?: open(t.id))
+            for (t in tools) ToolButton(t.icon, stringResource(t.label), selected = tool == t.id, accent = if (pro) Color.Unspecified else toolAccent(t.id), onClick = t.action ?: open(t.id))
         }
     }
     val panel: @Composable (Modifier) -> Unit = { m ->
@@ -395,7 +395,7 @@ fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit,
                                 topBar(Modifier.fillMaxWidth())
                                 if (tool.isEmpty()) {
                                     FlowRow(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(4.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                        for (t in tools) ToolButton(t.icon, stringResource(t.label), onClick = t.action ?: open(t.id))
+                                        for (t in tools) ToolButton(t.icon, stringResource(t.label), accent = if (pro) Color.Unspecified else toolAccent(t.id), onClick = t.action ?: open(t.id))
                                     }
                                 } else panel(Modifier.fillMaxSize())
                             }

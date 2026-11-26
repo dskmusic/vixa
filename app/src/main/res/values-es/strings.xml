@@ -1569,4 +1569,10 @@
     <string name="set_big_tiles">Tarjetas grandes en fuentes, filtros y animaciones</string>
     <string name="tool_add">Añadir</string>
     <string name="tool_looks">Looks</string>
+    <string name="exp_light">Ligero</string>
+    <string name="exp_light_d">720p · el archivo pesa poco</string>
+    <string name="exp_normal">Normal</string>
+    <string name="exp_normal_d">1080p · lo mejor para compartir</string>
+    <string name="exp_high">Alta</string>
+    <string name="exp_high_d">1440p · más nítido, pesa más</string>
 </resources>

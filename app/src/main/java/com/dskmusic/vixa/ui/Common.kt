@@ -206,10 +206,12 @@ fun <T> ChipRow(items: List<T>, selected: T?, label: @Composable (T) -> String, 
 /** Botón de herramienta: icono con etiqueta debajo. */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-fun ToolButton(icon: ImageVector, label: String, modifier: Modifier = Modifier, selected: Boolean = false, enabled: Boolean = true, twoLines: Boolean = false, onClick: () -> Unit) {
+fun ToolButton(icon: ImageVector, label: String, modifier: Modifier = Modifier, selected: Boolean = false, enabled: Boolean = true, twoLines: Boolean = false, accent: Color = Color.Unspecified, onClick: () -> Unit) {
     val color = when {
         !enabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
         selected -> MaterialTheme.colorScheme.primary
+        // matiz por familia de herramientas (solo en modo Normal): se mezcla con el color normal
+        accent != Color.Unspecified -> androidx.compose.ui.graphics.lerp(LocalContentColor.current, accent, 0.5f)
         else -> LocalContentColor.current
     }
     var tip by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }

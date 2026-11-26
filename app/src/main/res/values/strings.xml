@@ -1570,4 +1570,10 @@
     <string name="set_big_tiles">Big cards for fonts, filters and animations</string>
     <string name="tool_add">Add</string>
     <string name="tool_looks">Looks</string>
+    <string name="exp_light">Light</string>
+    <string name="exp_light_d">720p · small file</string>
+    <string name="exp_normal">Normal</string>
+    <string name="exp_normal_d">1080p · great for sharing</string>
+    <string name="exp_high">High</string>
+    <string name="exp_high_d">1440p · sharper, bigger file</string>
 </resources>
