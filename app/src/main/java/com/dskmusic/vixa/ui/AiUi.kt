@@ -166,6 +166,7 @@ private fun typeAndUse(id: String): Pair<Int, Int> = when {
     id.startsWith("selfie") -> R.string.ai_type_seg to R.string.ai_use_seg
     id == Models.FACE_MESH -> R.string.ai_type_face to R.string.ai_use_face
     id == Models.MAGIC_TOUCH -> R.string.ai_type_seg to R.string.ai_use_touch
+    id == Models.INPAINT -> R.string.ai_type_inpaint to R.string.ai_use_inpaint
     else -> R.string.ai_type_tts to R.string.ai_use_tts
 }
 

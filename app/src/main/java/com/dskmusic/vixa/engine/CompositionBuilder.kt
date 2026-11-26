@@ -101,6 +101,7 @@ object CompositionBuilder {
                         .append(',').append(pitchOf(c)).append(',').append(audioPath(c, m.path))
                 }
                 sb.append(',').append(c.transitionIn?.id ?: "")
+                if (c.wmRemove != null) sb.append("+wr")
                 for (e in c.effects) sb.append('+').append(e.id).append(e.defId)
             }
         }
@@ -157,6 +158,8 @@ object CompositionBuilder {
                 val effects = ArrayList<Effect>()
                 // Morph: genera el fotograma (ignora la imagen de entrada); los demas efectos y ClipEffect trabajan sobre el.
                 c.morph?.let { effects.add(MorphEffect(ctx, c.id)) }
+                // Quitar marca de agua: sobre el fotograma original, antes de recortes y transformaciones.
+                c.wmRemove?.let { effects.add(WmRemoveEffect(ctx, c.id)) }
                 if (c.kind != ClipKind.COLOR) for (e in c.effects) effects.add(FxEffect(ctx, c.id, e.id, e.defId, false))
                 effects.add(ClipEffect(ctx, c.id, MODE_TEXTURE, if (trans) c.transitionIn?.id ?: "" else "", outId, onTop, onTop, isMain, trans))
                 val m = c.media

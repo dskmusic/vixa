@@ -841,6 +841,8 @@ fun Project.mapPaths(f: (String) -> String): Project = copy(
             var r = c
             val m = c.media
             if (m != null) r = r.copy(media = m.copy(path = f(m.path)))
+            val wrm = c.wmRemove
+            if (wrm != null && wrm.patchPath.isNotEmpty()) r = r.copy(wmRemove = wrm.copy(patchPath = f(wrm.patchPath)))
             val mo = c.morph
             if (mo != null) r = r.copy(morph = mo.copy(images = mo.images.map { it.copy(path = f(it.path)) }))
             val st = c.sticker
@@ -857,7 +859,7 @@ fun Project.mapPaths(f: (String) -> String): Project = copy(
 )
 
 /** Archivos generados por IA: si faltan no hay que reenlazarlos, se regeneran. */
-fun Project.aiPaths(): Set<String> = allClips().flatMap { c -> listOfNotNull(c.aiAudio?.path, c.personCut?.path) + c.objTracks.map { it.path } }.filter { it.isNotEmpty() }.toSet()
+fun Project.aiPaths(): Set<String> = allClips().flatMap { c -> listOfNotNull(c.aiAudio?.path, c.personCut?.path, c.wmRemove?.patchPath) + c.objTracks.map { it.path } }.filter { it.isNotEmpty() }.toSet()
 
 /** Todas las rutas de archivo que usa el proyecto. */
 fun Project.allPaths(): Set<String> {

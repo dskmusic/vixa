@@ -59,6 +59,7 @@ object Models {
     const val SELFIE_HQ = "selfie_multiclass"
     const val FACE_MESH = "face_landmarker"
     const val MAGIC_TOUCH = "magic_touch"
+    const val INPAINT = "migan_inpaint"
 
     fun whisper(quality: String): String = "whisper_" + (if (quality == "tiny" || quality == "small") quality else "base")
 
@@ -139,6 +140,7 @@ object Models {
         ModelDef(SELFIE_HQ, "MediaPipe Selfie Multiclass", AiGroup.VIDEO, listOf(ModelFile("model.tflite", "$MP/image_segmenter/selfie_multiclass_256x256/float32/latest/selfie_multiclass_256x256.tflite", 16371837, "c6748b1253a99067ef71f7e26ca71096cd449baefa8f101900ea23016507e0e0")), 2500),
         ModelDef(FACE_MESH, "MediaPipe Face Landmarker", AiGroup.VIDEO, listOf(ModelFile("model.task", "$MP/face_landmarker/face_landmarker/float16/latest/face_landmarker.task", 3758596, "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff"))),
         ModelDef(MAGIC_TOUCH, "MediaPipe Interactive Segmenter", AiGroup.VIDEO, listOf(ModelFile("model.tflite", "$MP/interactive_segmenter/magic_touch/float32/latest/magic_touch.tflite", 6227884, "e24338a717c1b7ad8d159666677ef400babb7f33b8ad60c4d96db4ecf694cd25"))),
+        ModelDef(INPAINT, "MI-GAN Inpainting", AiGroup.VIDEO, listOf(ModelFile("model.onnx", "https://huggingface.co/andraniksargsyan/migan/resolve/main/migan.onnx", 29546882, "593eba0b7e04730f1b61c0a3cbca68d97d8d6a7ff5c6a44a7b9d7fcd880fc5ae"))),
     ) + VOICES
 
     fun get(id: String): ModelDef? = all.firstOrNull { it.id == id }

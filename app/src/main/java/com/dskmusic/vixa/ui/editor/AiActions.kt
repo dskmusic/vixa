@@ -254,6 +254,20 @@ class AiActions(private val vm: EditorViewModel) {
         }
     }
 
+    /** Genera con IA los parches que rellenan la zona de "Quitar marca de agua" de [c] (por cada muestra del vídeo) y los guarda en el clip. */
+    fun removeWatermark(c: Clip) {
+        val wr = c.wmRemove ?: return
+        container.aiJobs.run(vm.str(R.string.ai_job_wm), { progress ->
+            com.dskmusic.vixa.ai.WmInpaint.generate(store.context, store, c, wr, progress)
+        }) { res ->
+            if (!vm.alive) return@run
+            vm.updateClip(R.string.hist_wm_remove, c.id) {
+                it.copy(wmRemove = (it.wmRemove ?: wr).copy(mode = 2, patchPath = res.patchPath, patchStartUs = res.startUs, patchFps = res.fps, patchCount = res.count))
+            }
+            refresh()
+        }
+    }
+
     private class Pt(val t: Long, var x: Float, var y: Float, var s: Float, var r: Float)
 
     /**

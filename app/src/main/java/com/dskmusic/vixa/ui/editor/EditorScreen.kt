@@ -47,6 +47,7 @@ import androidx.compose.material.icons.filled.Animation
 import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.AutoFixHigh
+import androidx.compose.material.icons.filled.BrandingWatermark
 import androidx.compose.material.icons.filled.BlurOn
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
@@ -138,7 +139,7 @@ private class ToolDef(val id: String, val icon: ImageVector, val label: Int, val
 
 /** Herramientas visibles en modo Fácil (sin clip y con clip seleccionado). El resto es solo del modo Pro. */
 private val EASY_TOOLS = setOf(
-    "add", "text", "stickers", "audio", "ai", "morph", "morphedit", "templates", "effects", "filter", "adjust", "transform", "speed", "volume", "animation",
+    "add", "text", "stickers", "audio", "ai", "morph", "morphedit", "watermark", "wmremove", "templates", "effects", "filter", "adjust", "transform", "speed", "volume", "animation",
     "replace", "split", "delete", "dup", "crop", "transition",
 )
 
@@ -243,6 +244,7 @@ fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit,
             }
         },
         ToolDef("ai", Icons.Default.AutoAwesome, R.string.ai_short),
+        ToolDef("watermark", Icons.Default.BrandingWatermark, R.string.tool_watermark),
         ToolDef("adjlayer", Icons.Default.Layers, R.string.tool_looks) { vm.addAdjustLayer(); vm.tool.value = "filter" },
         // Sin clip seleccionado: efectos sobre todo el proyecto, como capa independiente (los de clip están al seleccionar uno).
         ToolDef("fxlayer", Icons.Default.Bolt, R.string.effects) { vm.addEffectLayer(); vm.tool.value = "effects" },
@@ -258,6 +260,7 @@ fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit,
         add(ToolDef("delete", Icons.Default.Delete, R.string.delete) { vm.deleteSelected() })
         add(ToolDef("dup", Icons.Default.ContentCopy, R.string.duplicate) { vm.edit(R.string.hist_duplicate) { it.duplicateClip(clip.id) } })
         if (clip.kind == ClipKind.TEXT) { add(ToolDef("text", Icons.Default.TextFields, R.string.text)); add(ToolDef("templates", Icons.Default.AutoAwesome, R.string.templates)) }
+        if (clip.kind == ClipKind.VIDEO || clip.kind == ClipKind.IMAGE) add(ToolDef("wmremove", Icons.Default.AutoFixHigh, R.string.tool_wm_remove))
         if (clip.morph != null) add(ToolDef("morphedit", Icons.Default.Face, R.string.morph_edit) { vm.morphEdit.value = clip.id })
         if (clip.kind == ClipKind.STICKER) add(ToolDef("stickers", Icons.Default.EmojiEmotions, R.string.stickers))
         if (clip.hasTimedMedia) add(ToolDef("speed", Icons.Default.Speed, R.string.speed))
@@ -543,6 +546,8 @@ private fun toolTitle(tool: String): Int = when (tool) {
     "text" -> R.string.text
     "templates" -> R.string.templates
     "stickers" -> R.string.stickers
+    "watermark" -> R.string.tool_watermark
+    "wmremove" -> R.string.tool_wm_remove
     "subtitles" -> R.string.subtitles
     "audiofx" -> R.string.audio_fx
     "voiceover" -> R.string.voice_over
@@ -559,6 +564,8 @@ private fun ToolPanel(vm: EditorViewModel, p: Project, tool: String, clip: Clip?
     when (tool) {
         "templates" -> TemplatesPanel(vm, p)
         "stickers" -> StickersPanel(vm, clip?.takeIf { it.kind == ClipKind.STICKER }, pick)
+        "watermark" -> WatermarkPanel(vm, p, pick)
+        "wmremove" -> if (clip != null) WmRemovePanel(vm, clip)
         "subtitles" -> SubtitlesPanel(vm, p, pick)
         "voiceover" -> VoiceOverPanel(vm)
         "canvas" -> CanvasPanel(vm, p)

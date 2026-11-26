@@ -1,6 +1,8 @@
 package com.dskmusic.vixa.engine
 
+import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
@@ -16,6 +18,7 @@ import com.dskmusic.vixa.model.LayerKind
 import com.dskmusic.vixa.model.Project
 import com.dskmusic.vixa.model.StickerType
 import com.dskmusic.vixa.model.TrackType
+import com.dskmusic.vixa.model.Watermark
 import com.dskmusic.vixa.model.kf
 import java.text.BreakIterator
 import kotlin.math.ceil
@@ -453,33 +456,82 @@ class OverlayRender {
         }
     }
 
+    // Marca de agua: el texto se compone una vez en un bitmap (guardado mientras no cambie) y se coloca o se repite en mosaico.
+    private var wmKey: List<Any?> = emptyList()
+    private var wmBmp: Bitmap? = null
+    private val wmPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+
+    private fun watermarkBitmap(wm: Watermark, minSide: Float): Bitmap? {
+        if (wm.imagePath.isNotEmpty()) return ImageCache.still(wm.imagePath)
+        if (wm.text.isEmpty()) return null
+        val textSize = (wm.scale * minSide * 0.35f).coerceAtLeast(6f)
+        val key = listOf(wm.text, wm.fontId, wm.color, wm.strokeWidth, wm.shadow, textSize.toInt())
+        wmBmp?.let { if (key == wmKey) return it }
+        val p = Paint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG)
+        p.typeface = Fonts.typeface(wm.fontId)
+        p.textSize = textSize
+        p.textAlign = Paint.Align.LEFT
+        val strokeW = wm.strokeWidth * textSize
+        val shadowR = if (wm.shadow) textSize * 0.12f else 0f
+        val pad = ceil(strokeW + shadowR + textSize * 0.1f).toInt() + 2
+        val fm = p.fontMetrics
+        val bmp = Bitmap.createBitmap(ceil(p.measureText(wm.text)).toInt() + pad * 2, ceil(fm.descent - fm.ascent).toInt() + pad * 2, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        val baseY = pad - fm.ascent
+        if (strokeW > 0f) {
+            val lum = Color.red(wm.color) * 0.299f + Color.green(wm.color) * 0.587f + Color.blue(wm.color) * 0.114f
+            p.style = Paint.Style.STROKE
+            p.strokeWidth = strokeW * 2f
+            p.strokeJoin = Paint.Join.ROUND
+            p.color = if (lum < 110f) 0xFFFFFFFF.toInt() else 0xFF000000.toInt()
+            c.drawText(wm.text, pad.toFloat(), baseY, p)
+        }
+        p.style = Paint.Style.FILL
+        p.color = wm.color
+        if (shadowR > 0f) p.setShadowLayer(shadowR, 0f, textSize * 0.05f, 0x99000000.toInt())
+        c.drawText(wm.text, pad.toFloat(), baseY, p)
+        wmKey = key
+        wmBmp = bmp
+        return bmp
+    }
+
     private fun drawWatermark(canvas: Canvas, p: Project, w: Int, h: Int) {
         val wm = p.watermark
         if (!wm.enabled) return
         val minSide = min(w, h).toFloat()
-        val cx = wm.x * w
-        val cy = wm.y * h
-        val alpha = (wm.opacity.coerceIn(0f, 1f) * 255).toInt()
-        if (wm.imagePath.isNotEmpty()) {
-            val b = ImageCache.still(wm.imagePath) ?: return
-            val bw = wm.scale * minSide
-            val bh = bw * b.height / b.width.toFloat()
-            rect.set(cx - bw / 2, cy - bh / 2, cx + bw / 2, cy + bh / 2)
-            bmpPaint.colorFilter = null
-            bmpPaint.alpha = alpha
-            canvas.drawBitmap(b, null, rect, bmpPaint)
-            bmpPaint.alpha = 255
-        } else if (wm.text.isNotEmpty()) {
-            paint.reset()
-            paint.isAntiAlias = true
-            paint.typeface = Fonts.typeface("poppins_bold")
-            paint.textSize = wm.scale * minSide * 0.35f
-            paint.textAlign = Paint.Align.CENTER
-            paint.color = 0xFFFFFFFF.toInt()
-            paint.alpha = alpha
-            paint.setShadowLayer(paint.textSize * 0.12f, 0f, paint.textSize * 0.05f, 0x99000000.toInt())
-            canvas.drawText(wm.text, cx, cy + paint.textSize * 0.35f, paint)
+        val bmp = watermarkBitmap(wm, minSide) ?: return
+        // Tamaño de la marca en píxeles: imagen = escala × lado menor (de ancho); texto = el bitmap tal cual.
+        val mw: Float
+        val mh: Float
+        if (wm.imagePath.isNotEmpty()) { mw = wm.scale * minSide; mh = mw * bmp.height / bmp.width.toFloat() } else { mw = bmp.width.toFloat(); mh = bmp.height.toFloat() }
+        wmPaint.alpha = (wm.opacity.coerceIn(0f, 1f) * 255).toInt()
+        fun mark(cx: Float, cy: Float) {
+            rect.set(cx - mw / 2, cy - mh / 2, cx + mw / 2, cy + mh / 2)
+            canvas.drawBitmap(bmp, null, rect, wmPaint)
         }
+        if (wm.mode == 0) {
+            canvas.save()
+            canvas.rotate(wm.angle, wm.x * w, wm.y * h)
+            mark(wm.x * w, wm.y * h)
+            canvas.restore()
+        } else {
+            val sx = max(mw * (1f + wm.spacingX), 8f)
+            val sy = max(mh * (1f + wm.spacingY), 8f)
+            // Con la inclinación el patrón debe cubrir la diagonal del lienzo.
+            val diag = kotlin.math.hypot(w.toDouble(), h.toDouble()).toFloat()
+            val nx = ceil(diag / sx / 2f).toInt() + 1
+            val ny = ceil(diag / sy / 2f).toInt() + 1
+            if ((2L * nx + 1) * (2L * ny + 1) <= 2500L) {
+                canvas.save()
+                canvas.rotate(wm.angle, w / 2f, h / 2f)
+                for (j in -ny..ny) {
+                    val off = if (wm.stagger && (j and 1) != 0) sx / 2f else 0f
+                    for (i in -nx..nx) mark(w / 2f + i * sx + off, h / 2f + j * sy)
+                }
+                canvas.restore()
+            }
+        }
+        wmPaint.alpha = 255
     }
 
     @Suppress("unused")

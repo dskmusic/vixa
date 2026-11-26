@@ -53,7 +53,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /** Un fotograma del medio del clip (en la posición de origen [atUs]) para encuadrar sobre él. */
-private fun frameOf(m: MediaRef, atUs: Long): Bitmap? = try {
+internal fun frameOf(m: MediaRef, atUs: Long): Bitmap? = try {
     if (m.isImage) {
         val b = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(m.path, b)

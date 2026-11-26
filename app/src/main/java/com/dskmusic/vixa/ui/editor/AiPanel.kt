@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Hearing
 import androidx.compose.material.icons.filled.Crop
+import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.RecordVoiceOver
@@ -166,6 +167,17 @@ fun AiPanel(vm: EditorViewModel, project: Project, clip: Clip?, pick: (PickReque
                     val seg = listOf(Models.SELFIE)
                     FeatureCard(Icons.Default.Person, stringResource(R.string.ai_f_person), stringResource(R.string.ai_d_person), status(seg), actions.canSegment(clip) && blocked(seg).isEmpty(),
                         blocked(seg).ifEmpty { stringResource(R.string.ai_hint_visual) }) { needs(seg) { vm.aiPage.value = "person" } }
+                    val inp = listOf(Models.INPAINT)
+                    FeatureCard(Icons.Default.AutoFixHigh, stringResource(R.string.ai_f_wm), stringResource(R.string.ai_d_wm), status(inp),
+                        (clip?.kind == ClipKind.VIDEO || clip?.kind == ClipKind.IMAGE) && clip.media != null && blocked(inp).isEmpty(),
+                        blocked(inp).ifEmpty { stringResource(R.string.ai_hint_wm) }) {
+                        needs(inp) {
+                            clip?.let { cl ->
+                                vm.updateClip(R.string.hist_wm_remove, cl.id) { it.copy(wmRemove = it.wmRemove?.copy(mode = 2) ?: com.dskmusic.vixa.model.WmRemove(mode = 2)) }
+                                vm.tool.value = "wmremove"
+                            }
+                        }
+                    }
                     val fm = listOf(Models.FACE_MESH)
                     FeatureCard(Icons.Default.Face, stringResource(R.string.ai_f_face), stringResource(R.string.ai_d_face), status(fm), clip?.kind == ClipKind.VIDEO && clip.media != null && blocked(fm).isEmpty(),
                         blocked(fm).ifEmpty { stringResource(R.string.ai_hint_video) }) { needs(fm) { vm.aiPage.value = "face" } }

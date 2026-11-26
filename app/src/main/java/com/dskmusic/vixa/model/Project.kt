@@ -344,6 +344,20 @@ data class Watermark(
     val y: Float = 0.92f,
     val scale: Float = 0.15f,
     val opacity: Float = 0.7f,
+    /** 0 = una sola marca en (x, y); 1 = mosaico por todo el lienzo. */
+    val mode: Int = 0,
+    /** Inclinación en grados. */
+    val angle: Float = 0f,
+    /** Mosaico: hueco entre marcas, en anchos y alturas de marca. */
+    val spacingX: Float = 0.3f,
+    val spacingY: Float = 0.6f,
+    /** Mosaico: las filas impares se desplazan media marca. */
+    val stagger: Boolean = true,
+    val fontId: String = "poppins_bold",
+    val color: Int = 0xFFFFFFFF.toInt(),
+    /** Contorno en fracción del tamaño de letra (0 = sin contorno). */
+    val strokeWidth: Float = 0f,
+    val shadow: Boolean = true,
 )
 
 /**
@@ -427,6 +441,26 @@ data class MorphSpec(
     val base: Int = 0,
 )
 
+/**
+ * Quitar marca de agua de un clip: zona (fracciones del fotograma, origen arriba a la izquierda) y modo: 0 = relleno con los bordes,
+ * 1 = clonar un trozo de al lado (desplazamiento offX/offY), 2 = parches de la IA (archivo generado, ver WmInpaint).
+ */
+@Serializable
+data class WmRemove(
+    val x0: Float = 0.68f,
+    val y0: Float = 0.86f,
+    val x1: Float = 0.97f,
+    val y1: Float = 0.96f,
+    val mode: Int = 0,
+    val feather: Float = 0.25f,
+    val offX: Float = 0f,
+    val offY: Float = -0.12f,
+    val patchPath: String = "",
+    val patchStartUs: Long = 0,
+    val patchFps: Int = 10,
+    val patchCount: Int = 0,
+)
+
 @Serializable
 data class Clip(
     val id: String = newId(),
@@ -495,6 +529,8 @@ data class Clip(
     val objTracks: List<ObjTrack> = emptyList(),
     /** Morph entre fotos (el clip es una imagen cuyo contenido genera MorphEffect). */
     val morph: MorphSpec? = null,
+    /** Quitar marca de agua (relleno, clonado o IA) sobre el fotograma original. */
+    val wmRemove: WmRemove? = null,
 ) {
     val endUs: Long get() = startUs + durationUs
     val isVisual: Boolean get() = kind == ClipKind.VIDEO || kind == ClipKind.IMAGE || kind == ClipKind.COLOR
