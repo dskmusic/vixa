@@ -45,6 +45,8 @@
 spectacular video in a minute and still be able to tweak absolutely everything.
 
 - 🪄 **Video assistant**: pick your media, a style (there are **27**) and the music. Vixa detects the beat, cuts on it and adds transitions, camera moves, color, effects, a title and an outro. The result is a regular project that opens in the editor.
+- 🧬 **Photo morph**: 2 or more photos that turn into each other for real (MediaPipe face mesh, eyes on eyes; not a crossfade). Automatic with faces, plus a points-and-framing editor for any image; optional slow zoom and back-and-forth.
+- 📖 **Built-in guide** with search and index.
 - 🎞️ **Full multitrack editor**: timeline with video, overlays, audio, text, stickers and adjustment layers.
 - 🎛️ **Pro / Normal mode**: a button in the editor shows or hides the advanced tools (on by default; remembered). With **Draw a path** any animatable element follows your finger's stroke, and the transport bar can be dragged to split the screen between preview and timeline.
 - 🌈 **Loads of content**: **85 transitions**, **180+ effects** (custom shaders), **100+ filters** and LUTs, **150+ animated text templates**, **120 vector shapes** and emojis.

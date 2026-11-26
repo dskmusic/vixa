@@ -1575,4 +1575,23 @@
     <string name="exp_normal_d">1080p · lo mejor para compartir</string>
     <string name="exp_high">Alta</string>
     <string name="exp_high_d">1440p · más nítido, pesa más</string>
+    <string name="tool_morph">Morph</string>
+    <string name="morph_title">Morph de %1$d fotos</string>
+    <string name="morph_desc">Las fotos se transforman una en otra: ojos, nariz y boca se mueven para encajar. Funciona mejor con caras mirando a cámara.</string>
+    <string name="morph_zoom">Zoom lento</string>
+    <string name="morph_ping">Ida y vuelta</string>
+    <string name="morph_create">Crear</string>
+    <string name="busy_morph">Creando morph…</string>
+    <string name="hist_morph">Añadir morph</string>
+    <string name="morph_need2">Elige al menos 2 fotos</string>
+    <string name="morph_nofaces">No se encontró cara en alguna foto, así que será un fundido simple. Usa caras de frente para un morph real.</string>
+    <string name="hist_morph_edit">Editar morph</string>
+    <string name="morph_edit">Editar morph</string>
+    <string name="morph_done">Listo</string>
+    <string name="morph_photo">Foto %1$d</string>
+    <string name="morph_mode_points">Puntos</string>
+    <string name="morph_mode_frame">Encuadre</string>
+    <string name="morph_hint_points">Toca para añadir un punto en todas las fotos y arrástralo en cada una hasta el mismo rasgo (ojo con ojo). Mantén pulsado un punto para borrarlo. Tus puntos: %1$d</string>
+    <string name="morph_hint_frame">Pellizca, gira y arrastra para encuadrar esta foto.</string>
+    <string name="morph_hold">Pausa en cada foto (pasos)</string>
 </resources>

@@ -507,6 +507,56 @@ class EditorViewModel(private val context: Context, val container: AppContainer,
         selectOnly(c.id)
     }
 
+    /** Morph entre fotos: caras automaticas (MediaPipe); si alguna foto no tiene cara, malla de cuadricula. */
+    /** Clip de morph que se esta editando a mano (puntos y encuadre); lo abre EditorScreen. */
+    val morphEdit = MutableStateFlow<String?>(null)
+
+    fun updateMorph(clipId: String, spec: com.dskmusic.vixa.model.MorphSpec) =
+        edit(R.string.hist_morph_edit) { it.updateClip(clipId) { c -> c.copy(morph = spec) } }
+
+    fun createMorph(paths: List<String>, zoom: Boolean, pingPong: Boolean) {
+        if (paths.size < 2) return
+        val pos = player.positionUs.value
+        val ar = project.value?.aspect ?: (9f / 16f)
+        background(R.string.busy_morph) { progress ->
+            val files = ArrayList<String>()
+            val dims = ArrayList<Pair<Int, Int>>()
+            val points = ArrayList<FloatArray?>()
+            for ((i, src) in paths.withIndex()) {
+                val f = withContext(Dispatchers.Default) { com.dskmusic.vixa.engine.MorphMath.prepare(app, src) }
+                if (f != null) {
+                    val o = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    android.graphics.BitmapFactory.decodeFile(f, o)
+                    val lm = withContext(Dispatchers.Default) {
+                        try { com.dskmusic.vixa.ai.Vision.faceLandmarks(container.models, f) } catch (e: Throwable) { ErrorLog.log("morph face", e); null }
+                    }
+                    files.add(f); dims.add(o.outWidth to o.outHeight); points.add(lm)
+                }
+                progress((i + 1f) / paths.size)
+            }
+            if (files.size < 2) { toast(str(R.string.err_generic)); return@background }
+            val faces = points.all { it != null }
+            if (!faces) toast(str(R.string.morph_nofaces))
+            val images = files.indices.map { i ->
+                if (faces) com.dskmusic.vixa.engine.MorphMath.fitFace(files[i], dims[i].first, dims[i].second, points[i]!!, ar)
+                else com.dskmusic.vixa.engine.MorphMath.fitCenter(files[i], dims[i].first, dims[i].second, ar)
+            }
+            val spec = com.dskmusic.vixa.model.MorphSpec(images, pingPong = pingPong, base = if (faces) 468 else 0)
+            val dur = com.dskmusic.vixa.engine.MorphMath.naturalDurationUs(images.size, spec.hold, 1_300_000L, pingPong)
+            // El fotograma del morph tiene el tamaño del lienzo: el recuadro de seleccion debe usar esa proporcion, no la de la foto.
+            val pr = project.value
+            val m = (Importer.probe(app, files[0]) ?: return@background).let { if (pr != null) it.copy(width = pr.width, height = pr.height) else it }
+            val clip = Importer.clipFor(m, dur).copy(
+                durationUs = dur, morph = spec, label = str(R.string.tool_morph),
+                animLoop = if (zoom) com.dskmusic.vixa.model.AnimRef("kb_zoom_in") else null,
+            )
+            edit(R.string.hist_morph) { p -> p.insertMain(listOf(clip), if (p.mainTrack.clips.isEmpty()) -1 else p.mainIndexAfter(pos)) }
+            selectOnly(clip.id)
+            // Sin caras no hay malla automatica: se abre el editor para poner los puntos a mano.
+            if (!faces) morphEdit.value = clip.id
+        }
+    }
+
     fun addAdjustLayer() {
         val c = Clip(kind = ClipKind.ADJUST, startUs = player.positionUs.value, durationUs = 3 * US)
         edit(R.string.hist_add_adjust) { it.addToTrack(c) }

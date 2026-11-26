@@ -841,6 +841,8 @@ fun Project.mapPaths(f: (String) -> String): Project = copy(
             var r = c
             val m = c.media
             if (m != null) r = r.copy(media = m.copy(path = f(m.path)))
+            val mo = c.morph
+            if (mo != null) r = r.copy(morph = mo.copy(images = mo.images.map { it.copy(path = f(it.path)) }))
             val st = c.sticker
             if (st != null && (st.type == StickerType.IMAGE || st.type == StickerType.ANIMATED)) r = r.copy(sticker = st.copy(value = f(st.value)))
             if (c.lutPath.isNotEmpty() && !c.lutPath.startsWith("asset:")) r = r.copy(lutPath = f(c.lutPath))

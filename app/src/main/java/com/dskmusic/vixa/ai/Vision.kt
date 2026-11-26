@@ -180,6 +180,32 @@ object Vision {
 
     private const val HEADER = 28L
 
+    /** Los 468 puntos (x,y en 0..1 de la foto) de la cara mas grande de una imagen, o null si no hay ninguna. */
+    fun faceLandmarks(store: ModelStore, path: String): FloatArray? {
+        val opts = FaceLandmarker.FaceLandmarkerOptions.builder()
+            .setBaseOptions(base(store, Models.FACE_MESH))
+            .setRunningMode(RunningMode.IMAGE)
+            .setNumFaces(4)
+            .setMinFaceDetectionConfidence(0.4f)
+            .build()
+        val fl = FaceLandmarker.createFromOptions(store.context, opts)
+        try {
+            val res = fl.detect(BitmapImageBuilder(decode(path, 1600)).build())
+            var best: FloatArray? = null
+            var bestArea = 0f
+            for (lm in res.faceLandmarks()) {
+                if (lm.size < 468) continue
+                var x0 = 1f; var x1 = 0f; var y0 = 1f; var y1 = 0f
+                for (i in 0 until 468) { val p = lm[i]; if (p.x() < x0) x0 = p.x(); if (p.x() > x1) x1 = p.x(); if (p.y() < y0) y0 = p.y(); if (p.y() > y1) y1 = p.y() }
+                val area = (x1 - x0) * (y1 - y0)
+                if (area > bestArea) { bestArea = area; best = FloatArray(468 * 2) { if (it % 2 == 0) lm[it / 2].x() else lm[it / 2].y() } }
+            }
+            return best
+        } finally {
+            try { fl.close() } catch (e: Throwable) { }
+        }
+    }
+
     /** Pista de la primera cara (10 muestras por segundo) con los puntos que usan los stickers que la siguen. */
     suspend fun faceTrack(store: ModelStore, media: String, fromUs: Long, toUs: Long, progress: (Float) -> Unit): List<FaceSample> {
         val opts = FaceLandmarker.FaceLandmarkerOptions.builder()

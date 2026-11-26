@@ -45,6 +45,8 @@
 un minuto tengas un vídeo espectacular y, si quieres, puedas retocar absolutamente todo.
 
 - 🪄 **Asistente de vídeo**: eliges tus medios, un estilo (hay **27**) y la música. Vixa detecta el ritmo, corta al compás y monta transiciones, cámara, color, efectos, título y cierre. El resultado es un proyecto normal que se abre en el editor.
+- 🧬 **Morph entre fotos**: 2 o más fotos que se transforman una en otra de verdad (malla de la cara con MediaPipe, ojos con ojos; no es un fundido). Automático con caras y editor de puntos y encuadre para cualquier imagen; zoom lento e ida y vuelta opcionales.
+- 📖 **Guía integrada** con buscador e índice.
 - 🎞️ **Editor multipista completo**: línea de tiempo con vídeo, superposiciones, audio, texto, stickers y capas de ajuste.
 - 🎛️ **Modo Pro / Normal**: un botón en el editor muestra u oculta las herramientas avanzadas (activado por defecto; se recuerda). Con **Dibujar camino** cualquier elemento animable sigue el trazo de tu dedo, y la barra de transporte se arrastra para repartir la pantalla entre vista previa y línea de tiempo.
 - 🌈 **Contenido de sobra**: **85 transiciones**, **180+ efectos** (shaders propios), **100+ filtros** y LUT, **150+ plantillas de texto** animadas, **120 formas** vectoriales y emojis.

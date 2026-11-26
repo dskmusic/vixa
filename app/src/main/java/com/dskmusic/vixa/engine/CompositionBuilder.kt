@@ -155,6 +155,8 @@ object CompositionBuilder {
 
             fun visualItem(c: Clip, isMain: Boolean, onTop: Boolean, outId: String, trans: Boolean = isMain): EditedMediaItem {
                 val effects = ArrayList<Effect>()
+                // Morph: genera el fotograma (ignora la imagen de entrada); los demas efectos y ClipEffect trabajan sobre el.
+                c.morph?.let { effects.add(MorphEffect(ctx, c.id)) }
                 if (c.kind != ClipKind.COLOR) for (e in c.effects) effects.add(FxEffect(ctx, c.id, e.id, e.defId, false))
                 effects.add(ClipEffect(ctx, c.id, MODE_TEXTURE, if (trans) c.transitionIn?.id ?: "" else "", outId, onTop, onTop, isMain, trans))
                 val m = c.media

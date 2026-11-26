@@ -404,6 +404,29 @@ data class ObjTrack(
     val size: Float = 0.1f,
 )
 
+/** Foto de un morph: recorte (centro, alto y giro en la foto) y puntos equivalentes (x,y en 0..1 de la foto; vacío = sin malla propia). */
+@Serializable
+data class MorphImage(
+    val path: String,
+    val w: Int,
+    val h: Int,
+    val cx: Float = 0.5f,
+    val cy: Float = 0.5f,
+    val ch: Float = 1f,
+    val rot: Float = 0f,
+    val pts: List<Float> = emptyList(),
+)
+
+/** Clip de morph: secuencia de fotos que se transforman una en otra. [hold] = tiempo de pausa en cada foto (en pasos). */
+@Serializable
+data class MorphSpec(
+    val images: List<MorphImage>,
+    val hold: Float = 0.35f,
+    val pingPong: Boolean = false,
+    /** Puntos automaticos (468 si hay caras, 0 si no); los siguientes los coloca el usuario y son iguales en todas las fotos. */
+    val base: Int = 0,
+)
+
 @Serializable
 data class Clip(
     val id: String = newId(),
@@ -470,6 +493,8 @@ data class Clip(
     val personCut: PersonCut? = null,
     /** Seguimientos de objetos analizados en este clip (se pueden insertar varios elementos con cada uno). */
     val objTracks: List<ObjTrack> = emptyList(),
+    /** Morph entre fotos (el clip es una imagen cuyo contenido genera MorphEffect). */
+    val morph: MorphSpec? = null,
 ) {
     val endUs: Long get() = startUs + durationUs
     val isVisual: Boolean get() = kind == ClipKind.VIDEO || kind == ClipKind.IMAGE || kind == ClipKind.COLOR

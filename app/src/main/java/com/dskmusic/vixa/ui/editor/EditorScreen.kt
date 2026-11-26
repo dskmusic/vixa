@@ -1,7 +1,5 @@
 package com.dskmusic.vixa.ui.editor
 
-import androidx.compose.animation.togetherWith
-import androidx.compose.animation.animateContentSize
 import androidx.compose.ui.draw.clip
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.foundation.combinedClickable
@@ -58,6 +56,7 @@ import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Diamond
 import androidx.compose.material.icons.filled.EmojiEmotions
+import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.FilterVintage
 import androidx.compose.material.icons.filled.GraphicEq
@@ -139,7 +138,7 @@ private class ToolDef(val id: String, val icon: ImageVector, val label: Int, val
 
 /** Herramientas visibles en modo Fácil (sin clip y con clip seleccionado). El resto es solo del modo Pro. */
 private val EASY_TOOLS = setOf(
-    "add", "text", "stickers", "audio", "ai", "templates", "effects", "filter", "adjust", "transform", "speed", "volume", "animation",
+    "add", "text", "stickers", "audio", "ai", "morph", "morphedit", "templates", "effects", "filter", "adjust", "transform", "speed", "volume", "animation",
     "replace", "split", "delete", "dup", "crop", "transition",
 )
 
@@ -161,6 +160,7 @@ fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit,
     var pick by remember { mutableStateOf<PickRequest?>(null) }
     var fadeAsk by remember { mutableStateOf<Boolean?>(null) }
     var exporting by remember { mutableStateOf(false) }
+    var morphPaths by remember { mutableStateOf<List<String>?>(null) }
     var splitAsk by remember { mutableStateOf(false) }
     var trackAsk by remember { mutableStateOf(false) }
     var demoNotice by remember { mutableStateOf(true) }
@@ -236,6 +236,12 @@ fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit,
         ToolDef("stickers", Icons.Default.EmojiEmotions, R.string.stickers),
         ToolDef("subtitles", Icons.Default.Subtitles, R.string.subtitles),
         ToolDef("voiceover", Icons.Default.Mic, R.string.voice_over),
+        ToolDef("morph", Icons.Default.Face, R.string.tool_morph) {
+            pick = PickRequest(PickKind.MEDIA, AddTarget.MAIN, multi = true) { ps ->
+                val im = ps.filter { com.dskmusic.vixa.media.Importer.typeOf(it) == com.dskmusic.vixa.media.MediaType.IMAGE }
+                if (im.size < 2) vm.toast(vm.str(R.string.morph_need2)) else morphPaths = im
+            }
+        },
         ToolDef("ai", Icons.Default.AutoAwesome, R.string.ai_short),
         ToolDef("adjlayer", Icons.Default.Layers, R.string.tool_looks) { vm.addAdjustLayer(); vm.tool.value = "filter" },
         // Sin clip seleccionado: efectos sobre todo el proyecto, como capa independiente (los de clip están al seleccionar uno).
@@ -252,6 +258,7 @@ fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit,
         add(ToolDef("delete", Icons.Default.Delete, R.string.delete) { vm.deleteSelected() })
         add(ToolDef("dup", Icons.Default.ContentCopy, R.string.duplicate) { vm.edit(R.string.hist_duplicate) { it.duplicateClip(clip.id) } })
         if (clip.kind == ClipKind.TEXT) { add(ToolDef("text", Icons.Default.TextFields, R.string.text)); add(ToolDef("templates", Icons.Default.AutoAwesome, R.string.templates)) }
+        if (clip.morph != null) add(ToolDef("morphedit", Icons.Default.Face, R.string.morph_edit) { vm.morphEdit.value = clip.id })
         if (clip.kind == ClipKind.STICKER) add(ToolDef("stickers", Icons.Default.EmojiEmotions, R.string.stickers))
         if (clip.hasTimedMedia) add(ToolDef("speed", Icons.Default.Speed, R.string.speed))
         if (clip.kind == ClipKind.AUDIO || (clip.kind == ClipKind.VIDEO && clip.media?.hasAudio == true)) {
@@ -424,12 +431,8 @@ fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit,
                             Timeline(vm, p, Modifier.fillMaxWidth().weight(1f), addKind)
                         }
                     }
-                    Surface(Modifier.animateContentSize(androidx.compose.animation.core.tween(180)), color = MaterialTheme.colorScheme.surfaceContainer) {
-                        androidx.compose.animation.AnimatedContent(
-                            targetState = tool.isEmpty(),
-                            transitionSpec = { (androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(180)) + androidx.compose.animation.slideInVertically(androidx.compose.animation.core.tween(180)) { it / 5 }) togetherWith androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(100)) },
-                            label = "toolsPanel",
-                        ) { isTools -> if (isTools) toolbarRow() else panel(Modifier.fillMaxWidth().heightIn(max = if (simple) minOf(maxH * 0.5f, 440.dp) else minOf(maxH * 0.4f, 340.dp))) }
+                    Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
+                        if (tool.isEmpty()) toolbarRow() else panel(Modifier.fillMaxWidth().heightIn(max = if (simple) minOf(maxH * 0.5f, 440.dp) else minOf(maxH * 0.4f, 340.dp)))
                     }
                 }
             }
@@ -517,6 +520,9 @@ fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit,
         },
         confirmButton = {},
     )
+    morphPaths?.let { ps -> MorphOptionsDialog(vm, ps) { morphPaths = null } }
+    val morphEditId by vm.morphEdit.collectAsState()
+    morphEditId?.let { id -> MorphEditorDialog(vm, id) { vm.morphEdit.value = null } }
     if (exporting) ExportDialog(container, p, position, onDismiss = { exporting = false }, onSetCover = { t -> vm.edit(R.string.hist_cover) { it.copy(coverUs = t) }; vm.toast(vm.str(R.string.cover_set)) })
 }
 

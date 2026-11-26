@@ -286,6 +286,25 @@ Selecciona uno o varios y toca **Añadir**. En la pista principal se añaden **d
 - {icon:MusicNote} **Audio:** al elegir una canción de más de 2 s te pregunta si la quieres **entera** o un **fragmento** con dos deslizadores. No es un corte destructivo: después puedes estirar los tiradores y aparece el resto de la pista.
 - Los **GIF y WebP animados** te preguntan si los quieres **animados** o como **imagen estática**.
 
+## Morph entre fotos
+
+Transforma una foto en otra de verdad: ojos, nariz y boca se desplazan y se deforman para encajar (no es un fundido).
+
+1. Pulsa **Morph** en la barra inferior y elige **2 fotos o más**. Funciona mejor con caras de frente.
+2. Elige **Zoom lento**, **Ida y vuelta** o ambos y pulsa **Crear**. La primera vez descarga el modelo de caras (unos 4 MB).
+3. Vixa detecta la malla de la cara (468 puntos) en cada foto, la endereza y la encuadra por los ojos, y genera el morph. Entra en la línea de tiempo como un clip de imagen normal: transformar, efectos, filtros, fotogramas clave, texto, exportar…
+
+**Cadenas:** con 3 fotos o más el morph pasa de una a la siguiente, con una pausa en cada una.
+
+**Sin cara reconocible** (objetos, animales, perfiles): se abre el editor y pones tú los puntos.
+
+**Editar morph** (al seleccionar el clip):
+- **Puntos:** un toque añade un punto en todas las fotos; arrástralo en cada foto hasta el mismo rasgo. Pulsación larga para borrarlo. Con caras también puedes añadir puntos propios (pelo, orejas…); los de la cara se ven pequeños y no se mueven.
+- **Encuadre:** pellizca, gira y arrastra para recortar cada foto.
+- **Pausa en cada foto** e **Ida y vuelta**.
+
+Todo es local: las fotos no salen del móvil.
+
 ---
 
 # {icon:ContentCut} 5. Herramientas de clip

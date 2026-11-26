@@ -1576,4 +1576,23 @@
     <string name="exp_normal_d">1080p · great for sharing</string>
     <string name="exp_high">High</string>
     <string name="exp_high_d">1440p · sharper, bigger file</string>
+    <string name="tool_morph">Morph</string>
+    <string name="morph_title">Morph %1$d photos</string>
+    <string name="morph_desc">The photos transform into each other: eyes, nose and mouth move to match. Works best with faces looking at the camera.</string>
+    <string name="morph_zoom">Slow zoom</string>
+    <string name="morph_ping">Back and forth</string>
+    <string name="morph_create">Create</string>
+    <string name="busy_morph">Creating morph…</string>
+    <string name="hist_morph">Add morph</string>
+    <string name="morph_need2">Pick at least 2 photos</string>
+    <string name="morph_nofaces">No face found in some photos, so this will be a plain crossfade. Use front-facing faces for a real morph.</string>
+    <string name="hist_morph_edit">Edit morph</string>
+    <string name="morph_edit">Edit morph</string>
+    <string name="morph_done">Done</string>
+    <string name="morph_photo">Photo %1$d</string>
+    <string name="morph_mode_points">Points</string>
+    <string name="morph_mode_frame">Framing</string>
+    <string name="morph_hint_points">Tap to add a point in every photo, then drag it on each photo to the same feature (eye on eye). Long-press a point to delete it. Your points: %1$d</string>
+    <string name="morph_hint_frame">Pinch, rotate and drag to frame this photo.</string>
+    <string name="morph_hold">Hold on each photo (steps)</string>
 </resources>

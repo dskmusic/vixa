@@ -286,6 +286,25 @@ Select one or several and tap **Add**. On the main track they are added **after 
 - {icon:MusicNote} **Audio:** when you pick a song longer than 2 s it asks whether you want it **whole** or a **section** with two sliders. It is not a destructive cut: later you can stretch the handles and the rest of the track appears.
 - **Animated GIFs and WebPs** ask whether you want them **animated** or as a **still image**.
 
+## Morph between photos
+
+Turn one photo into another for real: eyes, nose and mouth shift and warp to match (it is not a crossfade).
+
+1. Tap **Morph** in the bottom bar and pick **2 or more photos**. It works best with front-facing faces.
+2. Choose **Slow zoom**, **Back and forth** or both, then tap **Create**. The first time it downloads the face model (about 4 MB).
+3. Vixa detects the face mesh (468 points) in each photo, straightens and frames it by the eyes, and builds the morph. It lands on the timeline as a normal image clip: transform, effects, filters, keyframes, text, export…
+
+**Chains:** with 3 or more photos the morph goes from one to the next, holding on each.
+
+**No recognisable face** (objects, animals, side views): the editor opens so you can place the points yourself.
+
+**Edit morph** (with the clip selected):
+- **Points:** a tap adds a point on every photo; drag it on each photo to the same feature. Long-press to delete it. With faces you can also add your own points (hair, ears…); the face points are small and fixed.
+- **Framing:** pinch, rotate and drag to crop each photo.
+- **Hold on each photo** and **Back and forth**.
+
+Everything is local: photos never leave your phone.
+
 ---
 
 # {icon:ContentCut} 5. Clip tools
