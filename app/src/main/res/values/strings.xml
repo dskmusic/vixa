@@ -1663,4 +1663,5 @@
     <string name="ai_job_wm">Removing the watermark</string>
     <string name="ai_type_inpaint">Inpainting</string>
     <string name="ai_use_inpaint">Remove watermark</string>
+    <string name="tool_clouds">Clouds</string>
 </resources>

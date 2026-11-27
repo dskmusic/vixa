@@ -389,5 +389,5 @@ object Shapes {
         ShapeDef("bowtie") { poly(it, 0f, 0.2f, 0.5f, 0.5f, 0f, 0.8f); poly(it, 1f, 0.2f, 0.5f, 0.5f, 1f, 0.8f) },
     )
 
-    fun get(id: String): ShapeDef? = all.firstOrNull { it.id == id }
+    fun get(id: String): ShapeDef? = all.firstOrNull { it.id == id } ?: ShapeLib.def(id)
 }

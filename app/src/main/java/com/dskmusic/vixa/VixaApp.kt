@@ -54,6 +54,7 @@ class VixaApp : Application(), SingletonImageLoader.Factory {
     override fun onCreate() {
         super.onCreate()
         ErrorLog.init(this)
+        com.dskmusic.vixa.engine.ShapeLib.init(this)
         Fonts.init(this)
         Thumbs.init(this)
         Waveforms.init(this)

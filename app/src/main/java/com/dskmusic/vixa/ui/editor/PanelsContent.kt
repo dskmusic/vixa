@@ -374,17 +374,12 @@ fun StickersPanel(vm: EditorViewModel, selected: Clip?, pick: (PickRequest) -> U
             modifier = Modifier.fillMaxWidth().height(300.dp),
         )
         1 -> {
-            val tint = MaterialTheme.colorScheme.onSurface
-            FlowRow(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                for (s in Shapes.all.favFirst(rememberFavs()) { "shape:" + it.id }) {
-                    val path = remember(s.id) { android.graphics.Path().also { s.build(it) }.asComposePath() }
-                    Canvas(Modifier.size(46.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceContainerHighest).combinedClickable(onLongClick = { Favs.pending.value = "shape:" + s.id }) { vm.addSticker(StickerType.SHAPE, s.id) }.padding(8.dp)) {
-                        scale(size.width, size.height, pivot = androidx.compose.ui.geometry.Offset.Zero) {
-                            if (s.stroke) drawPath(path, tint, style = Stroke(0.08f)) else drawPath(path, tint)
-                        }
-                    }
-                }
-            }
+            val favs = rememberFavs()
+            ShapePicker(
+                tint = MaterialTheme.colorScheme.onSurface,
+                sort = { ids -> ids.favFirst(favs) { "shape:" + it } },
+                onLong = { Favs.pending.value = "shape:" + it },
+            ) { vm.addSticker(StickerType.SHAPE, it) }
         }
         else -> Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Button({ pick(PickRequest(PickKind.MEDIA, AddTarget.STICKER, multi = true) { vm.addMedia(it, AddTarget.STICKER) }) }) { Text(stringResource(R.string.pick_images_gifs)) }

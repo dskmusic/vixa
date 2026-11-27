@@ -37,6 +37,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Undo
@@ -139,7 +140,7 @@ private class ToolDef(val id: String, val icon: ImageVector, val label: Int, val
 
 /** Herramientas visibles en modo Fácil (sin clip y con clip seleccionado). El resto es solo del modo Pro. */
 private val EASY_TOOLS = setOf(
-    "add", "text", "stickers", "audio", "ai", "morph", "morphedit", "watermark", "wmremove", "templates", "effects", "filter", "adjust", "transform", "speed", "volume", "animation",
+    "add", "text", "stickers", "audio", "ai", "morph", "clouds", "morphedit", "watermark", "wmremove", "templates", "effects", "filter", "adjust", "transform", "speed", "volume", "animation",
     "replace", "split", "delete", "dup", "crop", "transition",
 )
 
@@ -162,6 +163,7 @@ fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit,
     var fadeAsk by remember { mutableStateOf<Boolean?>(null) }
     var exporting by remember { mutableStateOf(false) }
     var morphPaths by remember { mutableStateOf<List<String>?>(null) }
+    var showClouds by remember { mutableStateOf(false) }
     var splitAsk by remember { mutableStateOf(false) }
     var trackAsk by remember { mutableStateOf(false) }
     var demoNotice by remember { mutableStateOf(true) }
@@ -243,6 +245,7 @@ fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit,
                 if (im.size < 2) vm.toast(vm.str(R.string.morph_need2)) else morphPaths = im
             }
         },
+        ToolDef("clouds", Icons.Default.Cloud, R.string.tool_clouds) { showClouds = true },
         ToolDef("ai", Icons.Default.AutoAwesome, R.string.ai_short),
         ToolDef("watermark", Icons.Default.BrandingWatermark, R.string.tool_watermark),
         ToolDef("adjlayer", Icons.Default.Layers, R.string.tool_looks) { vm.addAdjustLayer(); vm.tool.value = "filter" },
@@ -524,6 +527,7 @@ fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit,
         confirmButton = {},
     )
     morphPaths?.let { ps -> MorphOptionsDialog(vm, ps) { morphPaths = null } }
+    if (showClouds) CloudsDialog(vm) { showClouds = false }
     val morphEditId by vm.morphEdit.collectAsState()
     morphEditId?.let { id -> MorphEditorDialog(vm, id) { vm.morphEdit.value = null } }
     if (exporting) ExportDialog(container, p, position, onDismiss = { exporting = false }, onSetCover = { t -> vm.edit(R.string.hist_cover) { it.copy(coverUs = t) }; vm.toast(vm.str(R.string.cover_set)) })

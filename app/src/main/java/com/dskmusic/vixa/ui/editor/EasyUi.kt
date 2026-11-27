@@ -76,7 +76,7 @@ fun toolAccent(id: String): androidx.compose.ui.graphics.Color = when (id) {
     "adjlayer", "filter", "adjust", "effects", "fxlayer" -> androidx.compose.ui.graphics.Color(0xFFFFB02E)
     "transform", "crop", "speed", "transition", "animation", "split", "dup", "replace" -> androidx.compose.ui.graphics.Color(0xFF3DA5FF)
     "ai" -> androidx.compose.ui.graphics.Color(0xFF4CD9A0)
-    "morph", "morphedit" -> androidx.compose.ui.graphics.Color(0xFFA3E635)
+    "morph", "morphedit", "clouds" -> androidx.compose.ui.graphics.Color(0xFFA3E635)
     "watermark", "wmedit", "wmremove" -> androidx.compose.ui.graphics.Color(0xFF6C7BFF)
     "add" -> androidx.compose.ui.graphics.Color(0xFFFF7A59)
     else -> androidx.compose.ui.graphics.Color.Unspecified
