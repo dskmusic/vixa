@@ -1623,7 +1623,7 @@
     <string name="split_title">Exportando en partes de hasta %1$d s</string>
     <string name="qe_gif_exact">Resultado exacto</string>
     <string name="qe_gif_exact_busy">Calculando…</string>
-    <string name="tool_watermark">Marca de agua</string>
+    <string name="tool_watermark">Watermark</string>
     <string name="wm_text">Texto</string>
     <string name="wm_image">Imagen</string>
     <string name="wm_text_label">Texto de la marca</string>
@@ -1639,7 +1639,7 @@
     <string name="wm_stagger">Filas desplazadas</string>
     <string name="wm_angle">Inclinación</string>
     <string name="wm_hint">Se aplica a todo el vídeo y se ve igual al exportar.</string>
-    <string name="tool_wm_remove">Quitar marca de agua</string>
+    <string name="tool_wm_remove">Quitar marca</string>
     <string name="hist_wm_remove">Quitar marca de agua</string>
     <string name="wmr_hint">Marca un cuadro sobre el logo y lo rellena. Relleno va bien en fondos lisos, Clonar copia un trozo de al lado y la IA reconstruye la zona fotograma a fotograma.</string>
     <string name="wmr_add">Quitar una marca de agua</string>

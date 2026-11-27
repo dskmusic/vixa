@@ -1640,7 +1640,7 @@
     <string name="wm_stagger">Offset rows</string>
     <string name="wm_angle">Tilt</string>
     <string name="wm_hint">Applies to the whole video and looks the same when exporting.</string>
-    <string name="tool_wm_remove">Remove watermark</string>
+    <string name="tool_wm_remove">Remove mark</string>
     <string name="hist_wm_remove">Remove watermark</string>
     <string name="wmr_hint">Marks a box over the logo and fills it in. Fill suits smooth backgrounds, Clone copies a nearby area, AI rebuilds the area frame by frame.</string>
     <string name="wmr_add">Remove a watermark</string>
