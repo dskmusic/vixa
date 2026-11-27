@@ -260,7 +260,6 @@ fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit,
         add(ToolDef("delete", Icons.Default.Delete, R.string.delete) { vm.deleteSelected() })
         add(ToolDef("dup", Icons.Default.ContentCopy, R.string.duplicate) { vm.edit(R.string.hist_duplicate) { it.duplicateClip(clip.id) } })
         if (clip.kind == ClipKind.TEXT) { add(ToolDef("text", Icons.Default.TextFields, R.string.text)); add(ToolDef("templates", Icons.Default.AutoAwesome, R.string.templates)) }
-        if (clip.kind == ClipKind.VIDEO || clip.kind == ClipKind.IMAGE) add(ToolDef("wmremove", Icons.Default.AutoFixHigh, R.string.tool_wm_remove))
         if (clip.morph != null) add(ToolDef("morphedit", Icons.Default.Face, R.string.morph_edit) { vm.morphEdit.value = clip.id })
         if (clip.kind == ClipKind.STICKER) add(ToolDef("stickers", Icons.Default.EmojiEmotions, R.string.stickers))
         if (clip.hasTimedMedia) add(ToolDef("speed", Icons.Default.Speed, R.string.speed))
@@ -300,6 +299,7 @@ fun EditorScreen(container: AppContainer, projectId: String, onExit: () -> Unit,
         }
         add(ToolDef("ai", Icons.Default.AutoAwesome, R.string.ai_short))
         add(ToolDef("keyframes", Icons.Default.Diamond, R.string.keyframes))
+        if (clip.kind == ClipKind.VIDEO || clip.kind == ClipKind.IMAGE) add(ToolDef("wmremove", Icons.Default.AutoFixHigh, R.string.tool_wm_remove))
         add(ToolDef("extras", Icons.Default.AutoFixHigh, R.string.extras))
     }
     val appSettings by container.settings.flow.collectAsState()
